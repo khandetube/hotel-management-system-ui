@@ -1,11 +1,18 @@
-const state = {
-  section: "Dashboard",
-  notifications: 3,
-  bookings: JSON.parse(localStorage.getItem("stayflow_bookings") || "null") || [
-    {id:"BK-1042",guest:"Olivia Carter",room:"Deluxe 204",checkIn:"Today",checkOut:"Oct 10",status:"Checked in",amount:"$540"},
-    {id:"BK-1041",guest:"Noah Williams",room:"Suite 508",checkIn:"Today",checkOut:"Oct 12",status:"Reserved",amount:"$920"},
-    {id:"BK-1039",guest:"Emma Johnson",room:"Classic 118",checkIn:"Oct 7",checkOut:"Oct 9",status:"Checked out",amount:"$310"},
-    {id:"BK-1038",guest:"Liam Brown",room:"Deluxe 302",checkIn:"Oct 6",checkOut:"Oct 8",status:"Reserved",amount:"$460"}
+const STORAGE = {
+  bookings: "stayflow_bookings",
+  rooms: "stayflow_rooms",
+  tasks: "stayflow_tasks",
+  guests: "stayflow_guests",
+  hotel: "stayflow_hotel",
+  theme: "stayflow_theme"
+};
+
+const defaults = {
+  bookings: [
+    {id:"BK-1042",guest:"Olivia Carter",room:"Deluxe 204",checkIn:"Today",checkOut:"Oct 10",status:"Checked in",amount:"$540",paymentStatus:"Paid",paymentMethod:"Card"},
+    {id:"BK-1041",guest:"Noah Williams",room:"Suite 508",checkIn:"Today",checkOut:"Oct 12",status:"Reserved",amount:"$920",paymentStatus:"Pending",paymentMethod:"Crypto / USDT"},
+    {id:"BK-1039",guest:"Emma Johnson",room:"Classic 118",checkIn:"Oct 7",checkOut:"Oct 9",status:"Checked out",amount:"$310",paymentStatus:"Paid",paymentMethod:"Card"},
+    {id:"BK-1038",guest:"Liam Brown",room:"Deluxe 302",checkIn:"Oct 6",checkOut:"Oct 8",status:"Reserved",amount:"$460",paymentStatus:"Pending",paymentMethod:"Bank transfer"}
   ],
   rooms: [
     {id:"101",type:"Classic",floor:"1",status:"Available",rate:"$120"},
@@ -17,24 +24,51 @@ const state = {
   ],
   guests: ["Olivia Carter","Noah Williams","Emma Johnson","Liam Brown"],
   tasks: [
-    {room:"204",task:"Turnover cleaning",assignee:"Maria",status:"In progress"},
-    {room:"302",task:"Deep cleaning",assignee:"James",status:"Pending"},
-    {room:"118",task:"Restock minibar",assignee:"Ava",status:"Completed"}
+    {id:"HK-01",room:"204",task:"Turnover cleaning",assignee:"Maria",status:"In progress"},
+    {id:"HK-02",room:"302",task:"Deep cleaning",assignee:"James",status:"Pending"},
+    {id:"HK-03",room:"118",task:"Restock minibar",assignee:"Ava",status:"Completed"}
   ]
 };
 
+const state = {
+  section:"Dashboard",
+  notifications:3,
+  action:null,
+  bookings:load(STORAGE.bookings, defaults.bookings),
+  rooms:load(STORAGE.rooms, defaults.rooms),
+  guests:load(STORAGE.guests, defaults.guests),
+  tasks:load(STORAGE.tasks, defaults.tasks)
+};
+
+function load(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : JSON.parse(JSON.stringify(fallback));
+  } catch (_) {
+    return JSON.parse(JSON.stringify(fallback));
+  }
+}
+
+function saveAll() {
+  localStorage.setItem(STORAGE.bookings, JSON.stringify(state.bookings));
+  localStorage.setItem(STORAGE.rooms, JSON.stringify(state.rooms));
+  localStorage.setItem(STORAGE.guests, JSON.stringify(state.guests));
+  localStorage.setItem(STORAGE.tasks, JSON.stringify(state.tasks));
+}
+
 const $ = (selector) => document.querySelector(selector);
-const save = () => localStorage.setItem("stayflow_bookings", JSON.stringify(state.bookings));
-const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (m) => ({
-  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-}[m]));
+const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (m) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+const money = (value) => {
+  const n = parseFloat(String(value).replace(/[^0-9.]/g,"")) || 0;
+  return "$" + n.toLocaleString();
+};
 const badge = (value) => {
-  const safe = esc(value);
   const cls = String(value).toLowerCase().replaceAll(" ","-");
-  return '<span class="status status-' + cls + '">' + safe + '</span>';
+  return '<span class="status status-' + cls + '">' + esc(value) + '</span>';
 };
 
 function shell(title, subtitle, body) {
+  state.section = title;
   $("#pageTitle").textContent = title;
   $("#pageSubtitle").textContent = subtitle;
   $("#workspace").innerHTML = body;
@@ -43,154 +77,181 @@ function shell(title, subtitle, body) {
   });
 }
 
-function bookingPanel() {
-  return '<section class="panel bookings-panel"><div class="panel-head"><div><h3>Recent reservations</h3><p>Latest booking activity</p></div><div class="panel-tools"><input id="bookingSearch" placeholder="Search reservations..." aria-label="Search reservations"><a href="#" data-section="Reservations">View all →</a></div></div><div class="table-wrap"><table><thead><tr><th>Booking</th><th>Guest</th><th>Room</th><th>Check-in</th><th>Check-out</th><th>Status</th><th>Amount</th><th>Actions</th></tr></thead><tbody id="bookingRows"></tbody></table></div></section>';
-}
-
-function openAction(type, bookingId) {
-  const booking = state.bookings.find(b => b.id === bookingId);
-  if (!booking) return;
-  state.action = {type, bookingId};
-  const title = type === "checkin" ? "Check-in guest" : type === "checkout" ? "Check-out guest" : "Update payment";
-  $("#actionTitle").textContent = title;
-  $("#actionSubtitle").textContent = booking.guest + " · " + booking.room;
-  $("#actionFields").innerHTML = type === "payment"
-    ? '<label>Payment status<select name="status"><option>Paid</option><option>Pending</option><option>Refunded</option></select></label><label>Payment method<select name="method"><option>Card</option><option>Cash</option><option>Bank transfer</option><option>Crypto / USDT</option></select></label>'
-    : '<label>Room<input name="room" value="' + esc(booking.room) + '" required></label><label>Notes<textarea name="notes" rows="3" placeholder="Optional operational note"></textarea></label>';
-  $("#actionModal")?.showModal();
-}
-
-function renderBookings(filter = "") {
-  const el = $("#bookingRows");
-  if (!el) return;
-  const query = filter.toLowerCase();
-  const rows = state.bookings.filter((booking) =>
-    Object.values(booking).join(" ").toLowerCase().includes(query)
-  );
-  el.innerHTML = rows.map((booking) =>
-    "<tr><td><strong>" + esc(booking.id) + "</strong></td><td>" + esc(booking.guest) +
-    "</td><td>" + esc(booking.room) + "</td><td>" + esc(booking.checkIn) +
-    "</td><td>" + esc(booking.checkOut) + "</td><td>" + badge(booking.status) +
-    "</td><td><strong>" + esc(booking.amount) + "</strong></td><td><div class=\"row-actions\"><button type=\"button\" data-action=\"checkin\" data-id=\"" + esc(booking.id) + "\">Check-in</button><button type=\"button\" data-action=\"checkout\" data-id=\"" + esc(booking.id) + "\">Check-out</button><button type=\"button\" data-action=\"payment\" data-id=\"" + esc(booking.id) + "\">Payment</button></div></td></tr>"
-  ).join("") || '<tr><td colspan="8" class="empty">No bookings found.</td></tr>';
+function totals() {
+  const total = state.rooms.length;
+  const occupied = state.rooms.filter(r => r.status === "Checked in").length;
+  const cleaning = state.rooms.filter(r => r.status === "Cleaning").length;
+  const maintenance = state.rooms.filter(r => r.status === "Maintenance").length;
+  const available = state.rooms.filter(r => r.status === "Available").length;
+  const revenue = state.bookings.reduce((s,b) => s + (parseFloat(String(b.amount).replace(/[^0-9.]/g,"")) || 0), 0);
+  return {total, occupied, cleaning, maintenance, available, revenue, occupancy: total ? Math.round(occupied/total*100) : 0};
 }
 
 function dashboard() {
-  shell("Dashboard", "Overview of today's hotel operations",
-    '<div class="welcome-row"><div><h2>Good morning, Alex</h2><p>Here\'s what is happening at Grand Aurora today.</p></div><button class="primary" data-action="new-booking">＋ New reservation</button></div>' +
+  const t = totals();
+  shell("Dashboard","Overview of today's hotel operations",
+    '<div class="welcome-row"><div><h2>Good morning, Alex</h2><p>Live browser-based hotel operations prototype.</p></div><button class="primary" data-action="new-booking">＋ New reservation</button></div>' +
     '<div class="stats-grid">' +
-    '<article class="stat-card"><div class="stat-top"><span>Occupancy</span><span class="trend up">↗ 8.2%</span></div><strong>78.4%</strong><small>vs. 72.5% last week</small><div class="mini-chart"><i style="height:35%"></i><i style="height:52%"></i><i style="height:42%"></i><i style="height:67%"></i><i style="height:58%"></i><i style="height:78%"></i><i style="height:86%"></i></div></article>' +
-    '<article class="stat-card"><div class="stat-top"><span>Today\'s revenue</span><span class="trend up">↗ 12.4%</span></div><strong>$12,840</strong><small>vs. $11,420 yesterday</small><div class="mini-chart"><i style="height:28%"></i><i style="height:48%"></i><i style="height:43%"></i><i style="height:62%"></i><i style="height:55%"></i><i style="height:72%"></i><i style="height:90%"></i></div></article>' +
-    '<article class="stat-card"><div class="stat-top"><span>Arrivals</span><span class="neutral">Today</span></div><strong>24</strong><small>18 rooms ready</small><div class="progress"><span style="width:72%"></span></div></article>' +
-    '<article class="stat-card"><div class="stat-top"><span>Departures</span><span class="neutral">Today</span></div><strong>17</strong><small>12 rooms cleared</small><div class="progress warning"><span style="width:42%"></span></div></article></div>' +
-    '<div class="grid-two"><section class="panel occupancy-panel"><div class="panel-head"><div><h3>Occupancy overview</h3><p>Room occupancy over the last 7 days</p></div><select aria-label="Occupancy period"><option>Last 7 days</option><option>Last 30 days</option></select></div><div class="bar-chart">' +
-    [54,68,61,76,71,84,78].map((height, i) => '<div><span style="height:' + height + '%"></span><label>' + ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][i] + "</label></div>").join("") +
-    '</div></section><section class="panel room-panel"><div class="panel-head"><div><h3>Room status</h3><p>Current room inventory</p></div><a href="#" data-section="Rooms">View all →</a></div><div class="room-list"><div><span class="room-dot occupied"></span><span>Occupied</span><strong>86</strong></div><div><span class="room-dot available"></span><span>Available</span><strong>28</strong></div><div><span class="room-dot cleaning"></span><span>Cleaning</span><strong>12</strong></div><div><span class="room-dot maintenance"></span><span>Maintenance</span><strong>4</strong></div></div><div class="donut"><div><strong>130</strong><small>Total rooms</small></div></div></section></div>' +
+    '<article class="stat-card"><div class="stat-top"><span>Occupancy</span><span class="trend up">Live</span></div><strong>' + t.occupancy + '%</strong><small>' + t.occupied + ' occupied of ' + t.total + ' rooms</small><div class="progress"><span style="width:' + t.occupancy + '%"></span></div></article>' +
+    '<article class="stat-card"><div class="stat-top"><span>Booking value</span><span class="trend up">Live</span></div><strong>' + money(t.revenue) + '</strong><small>' + state.bookings.length + ' reservation records</small><div class="mini-chart"><i style="height:38%"></i><i style="height:54%"></i><i style="height:47%"></i><i style="height:70%"></i><i style="height:62%"></i><i style="height:82%"></i><i style="height:91%"></i></div></article>' +
+    '<article class="stat-card"><div class="stat-top"><span>Arrivals</span><span class="neutral">Today</span></div><strong>' + state.bookings.filter(b => b.checkIn === "Today" && b.status !== "Checked out").length + '</strong><small>Guests expected today</small><div class="progress"><span style="width:68%"></span></div></article>' +
+    '<article class="stat-card"><div class="stat-top"><span>Room readiness</span><span class="neutral">Live</span></div><strong>' + t.available + '</strong><small>' + t.cleaning + ' cleaning · ' + t.maintenance + ' maintenance</small><div class="progress warning"><span style="width:' + (t.total ? Math.round(t.available/t.total*100) : 0) + '%"></span></div></article></div>' +
+    '<div class="grid-two"><section class="panel"><div class="panel-head"><div><h3>Room status</h3><p>Click a room in the Rooms module to change its operational state.</p></div><a href="#" data-section="Rooms">Manage rooms →</a></div>' +
+    '<div class="room-list room-list-wide"><div><span class="room-dot occupied"></span><span>Occupied</span><strong>' + t.occupied + '</strong></div><div><span class="room-dot available"></span><span>Available</span><strong>' + t.available + '</strong></div><div><span class="room-dot cleaning"></span><span>Cleaning</span><strong>' + t.cleaning + '</strong></div><div><span class="room-dot maintenance"></span><span>Maintenance</span><strong>' + t.maintenance + '</strong></div></div></section>' +
+    '<section class="panel"><div class="panel-head"><div><h3>Housekeeping queue</h3><p>Operational tasks requiring attention.</p></div><a href="#" data-section="Housekeeping">Open queue →</a></div><div class="task-summary">' + state.tasks.map(task => '<div><span>' + esc(task.room) + '</span><div><strong>' + esc(task.task) + '</strong><small>' + esc(task.assignee) + ' · ' + badge(task.status) + '</small></div></div>').join("") + '</div></section></div>' +
     bookingPanel()
   );
+  bindBookingSearch();
+}
+
+function bookingPanel() {
+  return '<section class="panel bookings-panel"><div class="panel-head"><div><h3>Recent reservations</h3><p>Search and operate each reservation.</p></div><div class="panel-tools"><input id="bookingSearch" placeholder="Search reservations..." aria-label="Search reservations"><a href="#" data-section="Reservations">View all →</a></div></div><div class="table-wrap"><table><thead><tr><th>Booking</th><th>Guest</th><th>Room</th><th>Check-in</th><th>Check-out</th><th>Status</th><th>Amount</th><th>Actions</th></tr></thead><tbody id="bookingRows"></tbody></table></div></section>';
+}
+
+function bindBookingSearch() {
   renderBookings();
-  const search = $("#bookingSearch");
-  if (search) search.oninput = (event) => renderBookings(event.target.value);
+  const input = $("#bookingSearch");
+  if (input) input.oninput = (e) => renderBookings(e.target.value);
+}
+
+function renderBookings(filter) {
+  const el = $("#bookingRows");
+  if (!el) return;
+  const q = String(filter || "").toLowerCase();
+  const rows = state.bookings.filter(b => Object.values(b).join(" ").toLowerCase().includes(q));
+  el.innerHTML = rows.map(b =>
+    '<tr><td><strong>' + esc(b.id) + '</strong></td><td>' + esc(b.guest) + '</td><td>' + esc(b.room) + '</td><td>' + esc(b.checkIn) + '</td><td>' + esc(b.checkOut) + '</td><td>' + badge(b.status) + '</td><td><strong>' + esc(b.amount) + '</strong><br><small>' + badge(b.paymentStatus || "Pending") + '</small></td><td><div class="row-actions"><button type="button" data-action="checkin" data-id="' + esc(b.id) + '">Check-in</button><button type="button" data-action="checkout" data-id="' + esc(b.id) + '">Check-out</button><button type="button" data-action="payment" data-id="' + esc(b.id) + '">Payment</button></div></td></tr>'
+  ).join("") || '<tr><td colspan="8" class="empty">No bookings found.</td></tr>';
 }
 
 function reservations() {
-  shell("Reservations", "Manage bookings and guest stays",
-    '<div class="welcome-row"><div><h2>Reservations</h2><p>Create, search and monitor every booking.</p></div><button class="primary" data-action="new-booking">＋ New reservation</button></div>' + bookingPanel()
-  );
-  renderBookings();
-  const search = $("#bookingSearch");
-  if (search) search.oninput = (event) => renderBookings(event.target.value);
-}
-
-function tablePage(title, subtitle, headers, rows) {
-  shell(title, subtitle,
-    '<div class="welcome-row"><div><h2>' + title + '</h2><p>' + subtitle + '.</p></div></div><section class="panel"><div class="table-wrap"><table><thead><tr>' +
-    headers.map((header) => "<th>" + header + "</th>").join("") +
-    "</tr></thead><tbody>" + rows.join("") + "</tbody></table></div></section>"
-  );
+  shell("Reservations","Manage bookings and guest stays",
+    '<div class="welcome-row"><div><h2>Reservations</h2><p>Create, search and update every stay.</p></div><button class="primary" data-action="new-booking">＋ New reservation</button></div>' + bookingPanel());
+  bindBookingSearch();
 }
 
 function rooms() {
-  tablePage("Rooms", "Manage room inventory and availability",
-    ["Room","Type","Floor","Status","Nightly rate"],
-    state.rooms.map((room) => "<tr><td><strong>" + esc(room.id) + "</strong></td><td>" + esc(room.type) + "</td><td>" + esc(room.floor) + "</td><td>" + badge(room.status) + "</td><td><strong>" + esc(room.rate) + "</strong></td></tr>")
-  );
+  shell("Rooms","Manage room inventory and availability",
+    '<div class="welcome-row"><div><h2>Rooms</h2><p>Use the action buttons to operate the room inventory.</p></div><button class="primary" data-action="add-room">＋ Add room</button></div>' +
+    '<section class="panel"><div class="filter-row"><select id="roomFilter"><option>All</option><option>Available</option><option>Checked in</option><option>Cleaning</option><option>Maintenance</option></select><span>' + state.rooms.length + ' rooms in browser storage</span></div><div class="table-wrap"><table><thead><tr><th>Room</th><th>Type</th><th>Floor</th><th>Status</th><th>Rate</th><th>Action</th></tr></thead><tbody id="roomRows"></tbody></table></div></section>');
+  renderRooms();
+  $("#roomFilter").onchange = (e) => renderRooms(e.target.value);
+}
+
+function renderRooms(filter) {
+  const f = filter || "All";
+  const rows = state.rooms.filter(r => f === "All" || r.status === f);
+  $("#roomRows").innerHTML = rows.map(r => '<tr><td><strong>' + esc(r.id) + '</strong></td><td>' + esc(r.type) + '</td><td>' + esc(r.floor) + '</td><td>' + badge(r.status) + '</td><td><strong>' + esc(r.rate) + '</strong></td><td><button class="table-action" data-action="room-status" data-id="' + esc(r.id) + '">Change status</button></td></tr>').join("") || '<tr><td colspan="6" class="empty">No rooms match this filter.</td></tr>';
 }
 
 function guests() {
-  tablePage("Guests", "Manage guest profiles and stay history",
-    ["Guest","Bookings","Current status"],
-    state.guests.map((guest) => {
-      const booking = state.bookings.find((item) => item.guest === guest);
-      return "<tr><td><strong>" + esc(guest) + "</strong></td><td>" + state.bookings.filter((item) => item.guest === guest).length + "</td><td>" + badge(booking?.status || "No active stay") + "</td></tr>";
-    })
-  );
+  const rows = state.guests.map(g => {
+    const bookings = state.bookings.filter(b => b.guest === g);
+    const active = bookings.find(b => b.status !== "Checked out");
+    return '<tr><td><strong>' + esc(g) + '</strong></td><td>' + bookings.length + '</td><td>' + badge(active?.status || "No active stay") + '</td><td><button class="table-action" data-action="guest-view" data-guest="' + esc(g) + '">View profile</button></td></tr>';
+  });
+  shell("Guests","Manage guest profiles and stay history",
+    '<div class="welcome-row"><div><h2>Guests</h2><p>Guest records are linked to reservations in this prototype.</p></div><button class="primary" data-action="add-guest">＋ Add guest</button></div>' +
+    '<section class="panel"><div class="table-wrap"><table><thead><tr><th>Guest</th><th>Bookings</th><th>Current status</th><th>Action</th></tr></thead><tbody>' + rows.join("") + '</tbody></table></div></section>');
 }
 
 function housekeeping() {
-  tablePage("Housekeeping", "Track cleaning and room service tasks",
-    ["Room","Task","Assignee","Status"],
-    state.tasks.map((task) => "<tr><td><strong>" + esc(task.room) + "</strong></td><td>" + esc(task.task) + "</td><td>" + esc(task.assignee) + "</td><td>" + badge(task.status) + "</td></tr>")
-  );
+  shell("Housekeeping","Track cleaning and room service tasks",
+    '<div class="welcome-row"><div><h2>Housekeeping</h2><p>Move tasks through Pending, In progress and Completed.</p></div><button class="primary" data-action="add-task">＋ New task</button></div>' +
+    '<section class="panel"><div class="table-wrap"><table><thead><tr><th>Room</th><th>Task</th><th>Assignee</th><th>Status</th><th>Action</th></tr></thead><tbody>' +
+    state.tasks.map(t => '<tr><td><strong>' + esc(t.room) + '</strong></td><td>' + esc(t.task) + '</td><td>' + esc(t.assignee) + '</td><td>' + badge(t.status) + '</td><td><button class="table-action" data-action="task-status" data-id="' + esc(t.id) + '">Advance status</button></td></tr>').join("") +
+    '</tbody></table></div></section>');
 }
 
 function payments() {
-  tablePage("Payments", "Track charges and payment status",
-    ["Booking","Guest","Amount","Status"],
-    state.bookings.map((booking) => "<tr><td><strong>" + esc(booking.id) + "</strong></td><td>" + esc(booking.guest) + "</td><td>" + esc(booking.amount) + "</td><td>" + badge(booking.paymentStatus || (booking.status === "Checked out" ? "Paid" : "Pending")) + "</td></tr>")
-  );
+  const paid = state.bookings.filter(b => (b.paymentStatus || "Pending") === "Paid").length;
+  const pending = state.bookings.filter(b => (b.paymentStatus || "Pending") === "Pending").length;
+  shell("Payments","Track charges and payment status",
+    '<div class="stats-grid"><article class="stat-card"><div class="stat-top"><span>Paid</span></div><strong>' + paid + '</strong><small>Settled reservations</small></article><article class="stat-card"><div class="stat-top"><span>Pending</span></div><strong>' + pending + '</strong><small>Awaiting payment</small></article><article class="stat-card"><div class="stat-top"><span>Total value</span></div><strong>' + money(totals().revenue) + '</strong><small>Current reservation value</small></article><article class="stat-card"><div class="stat-top"><span>Crypto support</span></div><strong>USDT</strong><small>Available in payment action</small></article></div>' +
+    '<section class="panel bookings-panel"><div class="table-wrap"><table><thead><tr><th>Booking</th><th>Guest</th><th>Amount</th><th>Status</th><th>Method</th><th>Action</th></tr></thead><tbody>' +
+    state.bookings.map(b => '<tr><td><strong>' + esc(b.id) + '</strong></td><td>' + esc(b.guest) + '</td><td>' + esc(b.amount) + '</td><td>' + badge(b.paymentStatus || "Pending") + '</td><td>' + esc(b.paymentMethod || "—") + '</td><td><button class="table-action" data-action="payment" data-id="' + esc(b.id) + '">Update payment</button></td></tr>').join("") +
+    '</tbody></table></div></section>');
 }
 
 function reports() {
-  const revenue = state.bookings.reduce((sum, booking) =>
-    sum + (parseFloat(String(booking.amount).replace(/[^0-9.]/g, "")) || 0), 0
-  );
-  shell("Reports", "Review operational performance",
-    '<div class="welcome-row"><div><h2>Performance reports</h2><p>Live calculations from the current browser dataset.</p></div></div>' +
-    '<div class="stats-grid">' +
-    '<article class="stat-card"><div class="stat-top"><span>Bookings</span></div><strong>' + state.bookings.length + '</strong><small>Current records</small></article>' +
-    '<article class="stat-card"><div class="stat-top"><span>Booking value</span></div><strong>$' + revenue.toLocaleString() + '</strong><small>Current reservation value</small></article>' +
-    '<article class="stat-card"><div class="stat-top"><span>Rooms</span></div><strong>' + state.rooms.length + '</strong><small>Inventory sample</small></article>' +
-    '<article class="stat-card"><div class="stat-top"><span>Tasks</span></div><strong>' + state.tasks.length + '</strong><small>Housekeeping tasks</small></article></div>'
-  );
+  const t = totals();
+  const paidValue = state.bookings.filter(b => (b.paymentStatus || "Pending") === "Paid").reduce((s,b) => s + (parseFloat(String(b.amount).replace(/[^0-9.]/g,"")) || 0),0);
+  shell("Reports","Review operational performance",
+    '<div class="welcome-row"><div><h2>Performance reports</h2><p>These metrics recalculate immediately after every operational change.</p></div><button class="primary" data-action="export-report">Export summary</button></div>' +
+    '<div class="stats-grid"><article class="stat-card"><div class="stat-top"><span>Occupancy</span></div><strong>' + t.occupancy + '%</strong><small>Based on current room states</small></article><article class="stat-card"><div class="stat-top"><span>Revenue</span></div><strong>' + money(t.revenue) + '</strong><small>Reservation value</small></article><article class="stat-card"><div class="stat-top"><span>Paid value</span></div><strong>' + money(paidValue) + '</strong><small>Settled payment value</small></article><article class="stat-card"><div class="stat-top"><span>Task completion</span></div><strong>' + (state.tasks.length ? Math.round(state.tasks.filter(x => x.status === "Completed").length/state.tasks.length*100) : 0) + '%</strong><small>Housekeeping completion</small></article></div>' +
+    '<section class="panel report-bars"><h3>Operational breakdown</h3><div class="report-row"><span>Available rooms</span><div><i style="width:' + (t.total ? t.available/t.total*100 : 0) + '%"></i></div><strong>' + t.available + '</strong></div><div class="report-row"><span>Occupied rooms</span><div><i style="width:' + (t.total ? t.occupied/t.total*100 : 0) + '%"></i></div><strong>' + t.occupied + '</strong></div><div class="report-row"><span>Cleaning rooms</span><div><i style="width:' + (t.total ? t.cleaning/t.total*100 : 0) + '%"></i></div><strong>' + t.cleaning + '</strong></div></section>');
 }
 
 function settings() {
-  const savedTheme = localStorage.getItem("stayflow_theme") || "light";
-  const savedHotel = localStorage.getItem("stayflow_hotel") || "Grand Aurora";
-  shell("Settings", "Configure the StayFlow workspace",
-    '<div class="welcome-row"><div><h2>System settings</h2><p>Preferences are saved locally in this browser.</p></div><button class="primary" data-action="save-settings">Save changes</button></div>' +
-    '<section class="panel"><div class="form-row"><label>Hotel name<input id="hotelName" value="' + esc(savedHotel) + '"></label><label>Interface theme<select id="themeSelect"><option value="light"' + (savedTheme === "light" ? " selected" : "") + '>Light</option><option value="compact"' + (savedTheme === "compact" ? " selected" : "") + '>Compact</option></select></label></div><div style="margin-top:18px"><h3>Workspace status</h3><p>Reservations: ' + state.bookings.length + ' · Rooms: ' + state.rooms.length + ' · Housekeeping tasks: ' + state.tasks.length + '</p></div></section>'
-  );
+  const hotel = localStorage.getItem(STORAGE.hotel) || "Grand Aurora";
+  const theme = localStorage.getItem(STORAGE.theme) || "light";
+  shell("Settings","Configure the StayFlow workspace",
+    '<div class="welcome-row"><div><h2>System settings</h2><p>Preferences persist in this browser.</p></div><button class="primary" data-action="save-settings">Save changes</button></div>' +
+    '<section class="panel"><div class="form-row"><label>Hotel name<input id="hotelName" value="' + esc(hotel) + '"></label><label>Interface theme<select id="themeSelect"><option value="light"' + (theme === "light" ? " selected" : "") + '>Light</option><option value="compact"' + (theme === "compact" ? " selected" : "") + '>Compact</option></select></label></div><div class="settings-grid"><div><strong>Reservation records</strong><span>' + state.bookings.length + '</span></div><div><strong>Rooms</strong><span>' + state.rooms.length + '</span></div><div><strong>Guests</strong><span>' + state.guests.length + '</span></div><div><strong>Housekeeping tasks</strong><span>' + state.tasks.length + '</span></div></div></section>');
+}
+
+function openAction(type, id) {
+  state.action = {type,id};
+  const booking = state.bookings.find(b => b.id === id);
+  const room = state.rooms.find(r => r.id === id);
+  const task = state.tasks.find(t => t.id === id);
+  const guest = type === "guest-view" ? id : null;
+  let title = "Operational action";
+  let subtitle = "";
+  let fields = "";
+  if (type === "checkin" || type === "checkout") {
+    title = type === "checkin" ? "Check-in guest" : "Check-out guest";
+    subtitle = booking.guest + " · " + booking.room;
+    fields = '<label>Room<input name="room" value="' + esc(booking.room) + '" required></label><label>Notes<textarea name="notes" rows="3" placeholder="Optional operational note"></textarea></label>';
+  } else if (type === "payment") {
+    title = "Update payment";
+    subtitle = booking.guest + " · " + booking.id;
+    fields = '<label>Payment status<select name="status"><option' + (booking.paymentStatus === "Paid" ? " selected" : "") + '>Paid</option><option' + (booking.paymentStatus === "Pending" ? " selected" : "") + '>Pending</option><option' + (booking.paymentStatus === "Refunded" ? " selected" : "") + '>Refunded</option></select></label><label>Payment method<select name="method"><option>Card</option><option>Cash</option><option>Bank transfer</option><option>Crypto / USDT</option></select></label>';
+  } else if (type === "room-status") {
+    title = "Change room status";
+    subtitle = "Room " + room.id + " · " + room.type;
+    fields = '<label>Status<select name="status"><option>Available</option><option>Checked in</option><option>Cleaning</option><option>Maintenance</option></select></label>';
+  } else if (type === "task-status") {
+    title = "Advance housekeeping task";
+    subtitle = "Room " + task.room + " · " + task.task;
+    fields = '<label>Status<select name="status"><option>Pending</option><option>In progress</option><option>Completed</option></select></label>';
+  } else if (type === "guest-view") {
+    const records = state.bookings.filter(b => b.guest === guest);
+    title = "Guest profile";
+    subtitle = guest;
+    fields = '<div class="profile-card"><strong>' + esc(guest) + '</strong><span>' + records.length + ' reservation(s)</span><span>' + (records.map(r => r.id + " · " + r.room + " · " + r.status).join("<br>") || "No reservation history") + '</span></div>';
+  }
+  $("#actionTitle").textContent = title;
+  $("#actionSubtitle").textContent = subtitle;
+  $("#actionFields").innerHTML = fields;
+  $("#actionModal").showModal();
+}
+
+function newBooking() {
+  $("#bookingModal").showModal();
 }
 
 function globalSearch(query) {
-  const q = query.trim().toLowerCase();
+  const q = String(query || "").trim().toLowerCase();
   if (!q) return;
-  const matches = state.bookings.filter(b => Object.values(b).join(" ").toLowerCase().includes(q));
-  if (matches.length) {
+  if (state.bookings.some(b => Object.values(b).join(" ").toLowerCase().includes(q))) {
     setSection("Reservations");
     const input = $("#bookingSearch");
     if (input) { input.value = query; renderBookings(query); }
-  } else if (state.guests.some(g => g.toLowerCase().includes(q))) {
-    setSection("Guests");
-  } else if (state.rooms.some(r => Object.values(r).join(" ").toLowerCase().includes(q))) {
-    setSection("Rooms");
-  } else {
-    alert("No matching records found.");
+    return;
   }
+  if (state.rooms.some(r => Object.values(r).join(" ").toLowerCase().includes(q))) { setSection("Rooms"); return; }
+  if (state.guests.some(g => g.toLowerCase().includes(q))) { setSection("Guests"); return; }
+  alert("No matching records found.");
 }
 
-function simple(title) {
-  shell(title, "Manage " + title.toLowerCase() + " and operational activity",
-    '<div class="welcome-row"><div><h2>' + title + '</h2><p>Operational workspace ready for backend integration.</p></div></div><section class="panel"><h3>' + title + ' workspace</h3><p>Interface, navigation and responsive layout are implemented. Connect a production API/database for persistent multi-user data.</p></section>'
-  );
+function applyTheme() {
+  document.body.classList.toggle("compact-theme", (localStorage.getItem(STORAGE.theme) || "light") === "compact");
 }
 
 function setSection(section) {
-  state.section = section;
-  const pages = {Dashboard:dashboard, Reservations:reservations, Rooms:rooms, Guests:guests, Housekeeping:housekeeping, Payments:payments, Reports:reports, Settings:settings};
-  (pages[section] || (() => simple(section)))();
+  const pages = {Dashboard:dashboard,Reservations:reservations,Rooms:rooms,Guests:guests,Housekeeping:housekeeping,Payments:payments,Reports:reports,Settings:settings};
+  (pages[section] || dashboard)();
 }
 
 document.addEventListener("click", (event) => {
@@ -201,94 +262,122 @@ document.addEventListener("click", (event) => {
     return;
   }
   const action = event.target.closest("[data-action]");
-  if (action && ["checkin","checkout","payment"].includes(action.dataset.action)) {
-    event.preventDefault();
-    openAction(action.dataset.action, action.dataset.id);
+  if (!action) return;
+  event.preventDefault();
+  const type = action.dataset.action;
+  if (type === "new-booking") return newBooking();
+  if (["checkin","checkout","payment","room-status","task-status","guest-view"].includes(type)) return openAction(type, action.dataset.id || action.dataset.guest);
+  if (type === "add-room") return openAction("room-status","__new__");
+  if (type === "add-guest") {
+    const name = prompt("Guest name");
+    if (name && name.trim()) { state.guests.push(name.trim()); saveAll(); setSection("Guests"); }
     return;
   }
-  if (event.target.closest('[data-action="new-booking"]')) {
-    const modal = $("#bookingModal");
-    if (modal?.showModal) modal.showModal();
+  if (type === "add-task") {
+    const room = prompt("Room number");
+    const task = prompt("Task");
+    const assignee = prompt("Assignee");
+    if (room && task && assignee) { state.tasks.push({id:"HK-"+Date.now(),room,task,assignee,status:"Pending"}); saveAll(); setSection("Housekeeping"); }
+    return;
   }
-  if (event.target.closest('[data-action="save-settings"]')) {
-    const hotel = $("#hotelName")?.value.trim();
-    const theme = $("#themeSelect")?.value || "light";
-    if (hotel) localStorage.setItem("stayflow_hotel", hotel);
-    localStorage.setItem("stayflow_theme", theme);
+  if (type === "save-settings") {
+    const hotel = $("#hotelName").value.trim();
+    const theme = $("#themeSelect").value;
+    if (hotel) { localStorage.setItem(STORAGE.hotel,hotel); document.querySelector(".hotel-switcher strong").textContent = hotel; }
+    localStorage.setItem(STORAGE.theme,theme);
+    applyTheme();
     alert("Settings saved.");
     return;
   }
-  if (event.target.closest('[data-action="close-action"]')) {
-    $("#actionModal")?.close();
-    return;
+  if (type === "export-report") {
+    const t = totals();
+    const report = "StayFlow Report\nOccupancy: " + t.occupancy + "%\nRooms: " + t.total + "\nBookings: " + state.bookings.length + "\nBooking value: " + money(t.revenue);
+    const blob = new Blob([report],{type:"text/plain"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href=url; a.download="stayflow-report.txt"; a.click(); URL.revokeObjectURL(url);
   }
-  if (event.target.closest('[data-action="close-modal"]')) {
-    $("#bookingModal")?.close();
-  }
+  if (type === "close-action") $("#actionModal").close();
+  if (type === "close-modal") $("#bookingModal").close();
+  if (type === "support") alert("Support center: demo mode. Connect this action to your production support channel.");
 });
 
 document.addEventListener("submit", (event) => {
   if (event.target.id === "actionForm") {
     event.preventDefault();
-    const booking = state.bookings.find(b => b.id === state.action?.bookingId);
-    if (!booking) return;
     const data = new FormData(event.target);
-    if (state.action.type === "checkin") booking.status = "Checked in";
-    if (state.action.type === "checkout") booking.status = "Checked out";
-    if (state.action.type === "payment") booking.paymentStatus = data.get("status");
-    save();
-    $("#actionModal")?.close();
-    setSection("Reservations");
+    const a = state.action;
+    if (!a) return;
+    if (a.type === "checkin" || a.type === "checkout") {
+      const b = state.bookings.find(x => x.id === a.id);
+      if (b) {
+        b.status = a.type === "checkin" ? "Checked in" : "Checked out";
+        const roomId = String(b.room).match(/\d+/)?.[0];
+        const room = state.rooms.find(x => x.id === roomId);
+        if (room) room.status = a.type === "checkin" ? "Checked in" : "Cleaning";
+      }
+    }
+    if (a.type === "payment") {
+      const b = state.bookings.find(x => x.id === a.id);
+      if (b) { b.paymentStatus = data.get("status"); b.paymentMethod = data.get("method"); }
+    }
+    if (a.type === "room-status") {
+      if (a.id === "__new__") {
+        const id = prompt("Room number");
+        const type = prompt("Room type","Deluxe");
+        const floor = prompt("Floor","1");
+        const rate = prompt("Nightly rate","$180");
+        if (id && type && floor && rate) state.rooms.push({id,type,floor,status:"Available",rate});
+      } else {
+        const r = state.rooms.find(x => x.id === a.id);
+        if (r) r.status = data.get("status");
+      }
+    }
+    if (a.type === "task-status") {
+      const t = state.tasks.find(x => x.id === a.id);
+      if (t) t.status = data.get("status");
+    }
+    saveAll();
+    $("#actionModal").close();
+    setSection(state.section);
     return;
   }
-  if (event.target.id !== "newBookingForm") return;
-  event.preventDefault();
-  const data = new FormData(event.target);
-  state.bookings.unshift({
-    id: "BK-" + (1043 + state.bookings.length),
-    guest: data.get("guest"),
-    room: data.get("room"),
-    checkIn: data.get("checkin"),
-    checkOut: data.get("checkout"),
-    status: "Reserved",
-    amount: data.get("amount") || "$0"
-  });
-  save();
-  $("#bookingModal")?.close();
-  setSection("Reservations");
+  if (event.target.id === "newBookingForm") {
+    event.preventDefault();
+    const data = new FormData(event.target);
+    const guest = String(data.get("guest") || "").trim();
+    const room = String(data.get("room") || "").trim();
+    const checkIn = String(data.get("checkin") || "");
+    const checkOut = String(data.get("checkout") || "");
+    if (!guest || !room || !checkIn || !checkOut || checkOut < checkIn) {
+      alert("Please enter valid reservation dates.");
+      return;
+    }
+    if (!state.guests.includes(guest)) state.guests.push(guest);
+    state.bookings.unshift({id:"BK-" + (1043 + state.bookings.length + Date.now()%100),guest,room,checkIn,checkOut,status:"Reserved",amount:data.get("amount") || "$0",paymentStatus:"Pending",paymentMethod:"Card"});
+    saveAll();
+    $("#bookingModal").close();
+    setSection("Reservations");
+  }
 });
 
-document.addEventListener("keydown", (event) => {
+document.addEventListener("keydown",(event) => {
   if (event.key === "Enter" && event.target.matches(".search input")) {
     event.preventDefault();
     globalSearch(event.target.value);
   }
 });
 
-document.addEventListener("DOMContentLoaded", () => {
-  const year = $("#yearLabel");
-  if (year) year.textContent = new Date().getFullYear();
-
-  const notificationBtn = $("#notificationBtn");
-  if (notificationBtn) {
-    notificationBtn.addEventListener("click", () => {
-      state.notifications = 0;
-      const count = $("#notificationCount");
-      if (count) count.textContent = "0";
-      notificationBtn.setAttribute("aria-label", "No unread notifications");
-    });
-  }
-
-  const savedHotel = localStorage.getItem("stayflow_hotel");
+document.addEventListener("DOMContentLoaded",() => {
+  $("#yearLabel").textContent = new Date().getFullYear();
+  const savedHotel = localStorage.getItem(STORAGE.hotel);
   if (savedHotel) document.querySelector(".hotel-switcher strong").textContent = savedHotel;
-  const form = $("#newBookingForm");
-  if (form) {
-    form.addEventListener("input", () => {
-      const inDate = form.elements.checkin?.value;
-      const outDate = form.elements.checkout?.value;
-      if (inDate && outDate && outDate < inDate) form.elements.checkout.setCustomValidity("Check-out must be after check-in.");
-      else form.elements.checkout.setCustomValidity("");
-    });
-  }
+  const notificationBtn = $("#notificationBtn");
+  if (notificationBtn) notificationBtn.addEventListener("click",() => {
+    state.notifications = 0;
+    $("#notificationCount").textContent = "0";
+  });
+  const support = document.querySelector(".support-card button");
+  if (support) support.dataset.action = "support";
+  applyTheme();
   dashboard();
 });
