@@ -268,16 +268,7 @@ document.addEventListener("click", (event) => {
   const nav = event.target.closest("[data-section]");
   if (nav) {
     event.preventDefault();
-    const targetSection = nav.dataset.section;
-    if (targetSection === "Dashboard") {
-      // Home is a real navigation action: always rebuild the dashboard,
-      // even when Dashboard is already selected.
-      dashboard();
-      window.scrollTo({top:0, left:0, behavior:"smooth"});
-    } else {
-      setSection(targetSection);
-      window.scrollTo({top:0, left:0, behavior:"smooth"});
-    }
+    setSection(nav.dataset.section);
     return;
   }
   const action = event.target.closest("[data-action]");
