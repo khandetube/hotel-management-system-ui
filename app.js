@@ -142,6 +142,32 @@ function reports() {
   );
 }
 
+function settings() {
+  const savedTheme = localStorage.getItem("stayflow_theme") || "light";
+  const savedHotel = localStorage.getItem("stayflow_hotel") || "Grand Aurora";
+  shell("Settings", "Configure the StayFlow workspace",
+    '<div class="welcome-row"><div><h2>System settings</h2><p>Preferences are saved locally in this browser.</p></div><button class="primary" data-action="save-settings">Save changes</button></div>' +
+    '<section class="panel"><div class="form-row"><label>Hotel name<input id="hotelName" value="' + esc(savedHotel) + '"></label><label>Interface theme<select id="themeSelect"><option value="light"' + (savedTheme === "light" ? " selected" : "") + '>Light</option><option value="compact"' + (savedTheme === "compact" ? " selected" : "") + '>Compact</option></select></label></div><div style="margin-top:18px"><h3>Workspace status</h3><p>Reservations: ' + state.bookings.length + ' · Rooms: ' + state.rooms.length + ' · Housekeeping tasks: ' + state.tasks.length + '</p></div></section>'
+  );
+}
+
+function globalSearch(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return;
+  const matches = state.bookings.filter(b => Object.values(b).join(" ").toLowerCase().includes(q));
+  if (matches.length) {
+    setSection("Reservations");
+    const input = $("#bookingSearch");
+    if (input) { input.value = query; renderBookings(query); }
+  } else if (state.guests.some(g => g.toLowerCase().includes(q))) {
+    setSection("Guests");
+  } else if (state.rooms.some(r => Object.values(r).join(" ").toLowerCase().includes(q))) {
+    setSection("Rooms");
+  } else {
+    alert("No matching records found.");
+  }
+}
+
 function simple(title) {
   shell(title, "Manage " + title.toLowerCase() + " and operational activity",
     '<div class="welcome-row"><div><h2>' + title + '</h2><p>Operational workspace ready for backend integration.</p></div></div><section class="panel"><h3>' + title + ' workspace</h3><p>Interface, navigation and responsive layout are implemented. Connect a production API/database for persistent multi-user data.</p></section>'
@@ -150,7 +176,7 @@ function simple(title) {
 
 function setSection(section) {
   state.section = section;
-  const pages = {Dashboard:dashboard, Reservations:reservations, Rooms:rooms, Guests:guests, Housekeeping:housekeeping, Payments:payments, Reports:reports};
+  const pages = {Dashboard:dashboard, Reservations:reservations, Rooms:rooms, Guests:guests, Housekeeping:housekeeping, Payments:payments, Reports:reports, Settings:settings};
   (pages[section] || (() => simple(section)))();
 }
 
@@ -164,6 +190,14 @@ document.addEventListener("click", (event) => {
   if (event.target.closest('[data-action="new-booking"]')) {
     const modal = $("#bookingModal");
     if (modal?.showModal) modal.showModal();
+  }
+  if (event.target.closest('[data-action="save-settings"]')) {
+    const hotel = $("#hotelName")?.value.trim();
+    const theme = $("#themeSelect")?.value || "light";
+    if (hotel) localStorage.setItem("stayflow_hotel", hotel);
+    localStorage.setItem("stayflow_theme", theme);
+    alert("Settings saved.");
+    return;
   }
   if (event.target.closest('[data-action="close-modal"]')) {
     $("#bookingModal")?.close();
@@ -188,6 +222,13 @@ document.addEventListener("submit", (event) => {
   setSection("Reservations");
 });
 
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && event.target.matches(".search input")) {
+    event.preventDefault();
+    globalSearch(event.target.value);
+  }
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   const year = $("#yearLabel");
   if (year) year.textContent = new Date().getFullYear();
@@ -202,5 +243,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  const savedHotel = localStorage.getItem("stayflow_hotel");
+  if (savedHotel) document.querySelector(".hotel-switcher strong").textContent = savedHotel;
+  const form = $("#newBookingForm");
+  if (form) {
+    form.addEventListener("input", () => {
+      const inDate = form.elements.checkin?.value;
+      const outDate = form.elements.checkout?.value;
+      if (inDate && outDate && outDate < inDate) form.elements.checkout.setCustomValidity("Check-out must be after check-in.");
+      else form.elements.checkout.setCustomValidity("");
+    });
+  }
   dashboard();
 });
