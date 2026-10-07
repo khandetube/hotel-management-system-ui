@@ -44,3 +44,17 @@ body.dark-theme{--bg:#0b1220;--surface:#111a2a;--surface-2:#151f31;--text:#edf2f
 .dark-theme .main,.dark-theme .app-shell{background:var(--bg)}.dark-theme .topbar{background:rgba(15,23,39,.90);border-color:var(--border)}.dark-theme .search,.dark-theme .icon-btn{background:#121c2d;border-color:var(--border);color:#9ba8bc}.dark-theme .stat-card,.dark-theme .panel{background:linear-gradient(180deg,#111a2a,#101827);border-color:var(--border)}.dark-theme .table-wrap{background:#101827;border-color:var(--border)}.dark-theme .table-wrap th{background:#141e30;color:#8f9bb0;border-color:var(--border)}.dark-theme .table-wrap td{border-color:#202b40;color:#aeb9cb}.dark-theme .table-wrap tbody tr:hover td{background:#141e30}.dark-theme .panel-tools input,.dark-theme .filter-row select,.dark-theme .panel-head select{background:#121c2d;color:var(--text);border-color:var(--border)}.dark-theme .neutral{background:#1b2638;color:#a5b0c2}.dark-theme .progress,.dark-theme .report-row>div{background:#1e2a3e}.dark-theme .settings-grid>div,.dark-theme .profile-card{background:#121c2d;border-color:var(--border)}.dark-theme .row-actions button,.dark-theme .table-action{background:#121c2d;border-color:var(--border);color:#b9c4d7}.dark-theme #newBookingForm,.dark-theme #actionForm{background:#111a2a}.dark-theme #newBookingForm input,.dark-theme #actionForm input,.dark-theme #actionForm select,.dark-theme #actionForm textarea{background:#0f1828;color:var(--text);border-color:var(--border)}.dark-theme .close{background:#1b2638;color:#c4cede}.dark-theme .main footer{color:#68758b}
 
 .boot-error{border-color:#f0c5cc;background:linear-gradient(180deg,#fff,#fff8f9)}.boot-error-text{margin:14px 0!important;padding:12px;border-radius:10px;background:#fff0f2;color:#a52e43;font-family:ui-monospace,SFMono-Regular,monospace;font-size:12px;overflow:auto}.dark-theme .boot-error{background:#171522;border-color:#55303a}.dark-theme .boot-error-text{background:#281720;color:#ff9caf}
+
+
+/* Premium icon system — 2026-10-07 */
+.nav a{gap:11px}
+.nav-icon,.hotel-icon,.search-icon{width:20px;height:20px;min-width:20px;display:inline-grid;place-items:center;color:#8996ae;transition:color .18s ease,transform .18s ease,filter .18s ease}
+.nav-icon svg,.hotel-icon svg,.search-icon svg,.top-icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav a:hover .nav-icon{color:#cbd5ff;transform:scale(1.06)}
+.nav a.active .nav-icon{color:#91a0ff;filter:drop-shadow(0 3px 8px rgba(112,130,255,.22))}
+.hotel-icon{width:28px;height:28px;min-width:28px;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:rgba(255,255,255,.045);color:#9aa9ff}
+.hotel-icon svg{width:17px;height:17px}
+.search-icon{color:#8b96a9;width:17px;min-width:17px;height:17px}
+.top-icon{width:18px;height:18px;display:block}
+.icon-btn{display:grid;place-items:center}
+.icon-btn:hover .top-icon{transform:scale(1.06)}
