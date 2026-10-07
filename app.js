@@ -406,3 +406,26 @@ if (document.readyState === "loading") {
 } else {
   bootStayFlow();
 }
+
+// --- Modern command palette + quick actions layer ---
+function openCommandPalette(){
+  const existing=document.getElementById('commandPalette');
+  if(existing){ existing.classList.add('open'); existing.querySelector('input')?.focus(); return; }
+  const el=document.createElement('div');
+  el.id='commandPalette'; el.className='command-palette open';
+  el.innerHTML=`<div class="palette-backdrop" data-close-palette></div><div class="palette-panel">
+    <div class="palette-head"><div><strong>Quick Actions</strong><small>Navigate and manage StayFlow</small></div><button type="button" data-close-palette>Esc</button></div>
+    <div class="palette-search"><span>⌕</span><input id="paletteInput" placeholder="Search pages or actions..." autocomplete="off"></div>
+    <div class="palette-list" id="paletteList"></div>
+  </div>`;
+  document.body.appendChild(el);
+  const items=[
+    ['Dashboard','Open dashboard','Dashboard'],['Reservations','Manage reservations','Reservations'],['Rooms','Room inventory & status','Rooms'],['Guests','Guest profiles','Guests'],['Housekeeping','Cleaning operations','Housekeeping'],['Payments','Payments & transactions','Payments'],['Reports','Analytics & reports','Reports'],['Settings','System settings','Settings']
+  ];
+  const list=el.querySelector('#paletteList'), input=el.querySelector('#paletteInput');
+  const render=(q='')=>{list.innerHTML=items.filter(x=>(x[0]+' '+x[1]).toLowerCase().includes(q.toLowerCase())).map(x=>`<button class="palette-item" data-section="${x[2]}"><span class="palette-dot"></span><span><b>${x[0]}</b><small>${x[1]}</small></span><kbd>↵</kbd></button>`).join('')||'<div class="palette-empty">No matching actions</div>';};
+  render(); input.addEventListener('input',e=>render(e.target.value));
+  list.addEventListener('click',e=>{const b=e.target.closest('[data-section]');if(b){el.remove();document.querySelector(`[data-section="${b.dataset.section}"]`)?.click();}});
+  el.addEventListener('click',e=>{if(e.target.closest('[data-close-palette]'))el.remove();});
+}
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openCommandPalette();}if(e.key==='Escape')document.getElementById('commandPalette')?.remove();});
