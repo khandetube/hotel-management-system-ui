@@ -25,3 +25,6 @@ function setSection(s){state.section=s;if(s==="Dashboard")dashboard();else if(s=
 document.addEventListener("click",e=>{const nav=e.target.closest("[data-section]");if(nav){e.preventDefault();setSection(nav.dataset.section);}if(e.target.closest('[data-action="new-booking"]'))$("#bookingModal").showModal();if(e.target.closest('[data-action="close-modal"]'))$("#bookingModal").close();});
 document.addEventListener("submit",e=>{if(e.target.id!=="newBookingForm")return;e.preventDefault();const d=new FormData(e.target);state.bookings.unshift({id:"BK-"+(1043+state.bookings.length),guest:d.get("guest"),room:d.get("room"),checkIn:d.get("checkin"),checkOut:d.get("checkout"),status:"Reserved",amount:d.get("amount")||"$0"});save();$("#bookingModal").close();setSection("Reservations");});
 $("#yearLabel").textContent=new Date().getFullYear();dashboard();renderBookings();
+
+const notificationBtn=$("#notificationBtn");
+if(notificationBtn)notificationBtn.addEventListener("click",()=>{state.notifications=0;const n=$("#notificationCount");if(n)n.textContent="0";notificationBtn.setAttribute("aria-label","No unread notifications");});
