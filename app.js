@@ -429,3 +429,194 @@ function openCommandPalette(){
   el.addEventListener('click',e=>{if(e.target.closest('[data-close-palette]'))el.remove();});
 }
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openCommandPalette();}if(e.key==='Escape')document.getElementById('commandPalette')?.remove();});
+
+
+/* =========================================================
+   STAYFLOW PRO OPERATIONS LAYER
+   Adds operational PMS workflows without requiring a backend.
+   Data is persisted locally so the portfolio demo remains usable.
+   ========================================================= */
+const PRO_STORAGE = {
+  preferences:"stayflow_pro_preferences",
+  notes:"stayflow_guest_notes",
+  audit:"stayflow_audit_log",
+  payments:"stayflow_transactions"
+};
+const proLoad=(k,f)=>load(k,f);
+const proSave=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const proData={
+  prefs:proLoad(PRO_STORAGE.preferences,{dateRange:"today",currency:"USD",autoRefresh:true}),
+  notes:proLoad(PRO_STORAGE.notes,{}),
+  audit:proLoad(PRO_STORAGE.audit,[]),
+  transactions:proLoad(PRO_STORAGE.payments,[])
+};
+function proAudit(action,detail){
+  proData.audit.unshift({at:new Date().toISOString(),action,detail});
+  proData.audit=proData.audit.slice(0,100);
+  proSave(PRO_STORAGE.audit,proData.audit);
+}
+function proId(prefix){return prefix+"-"+Date.now().toString(36).toUpperCase();}
+function proAppend(id,html){
+  if(document.getElementById(id)) return;
+  $("#workspace")?.insertAdjacentHTML("beforeend",html);
+}
+function proMoney(v){return money(v);}
+function proDateLabel(v){
+  if(!v) return "—";
+  const d=new Date(v+"T00:00:00");
+  return isNaN(d) ? v : d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});
+}
+function proRoomNumber(room){return String(room||"").match(/\d+/)?.[0]||String(room||"");}
+function proBooking(id){return state.bookings.find(b=>b.id===id);}
+function proOpen(title,subtitle,fields,onSave){
+  let d=document.getElementById("proModal");
+  if(!d){
+    d=document.createElement("dialog");d.id="proModal";
+    d.innerHTML='<form method="dialog" class="pro-modal-form"><div class="modal-head"><div><h3 id="proTitle"></h3><p id="proSubtitle"></p></div><button type="button" class="close" data-pro-close>×</button></div><div id="proFields"></div><div class="pro-modal-actions"><button type="button" class="secondary" data-pro-close>Cancel</button><button class="primary" type="submit">Save</button></div></form>';
+    document.body.appendChild(d);
+    d.addEventListener("click",e=>{if(e.target.closest("[data-pro-close]")) d.close();});
+    d.addEventListener("submit",e=>{e.preventDefault();const fn=d._save;if(fn&&fn(new FormData(e.target))!==false)d.close();});
+  }
+  $("#proTitle").textContent=title;$("#proSubtitle").textContent=subtitle;$("#proFields").innerHTML=fields;d._save=onSave;d.showModal();
+}
+function proStat(label,value,meta,cls=""){
+  return '<article class="stat-card pro-stat '+cls+'"><div class="stat-top"><span>'+esc(label)+'</span><span class="neutral">Live</span></div><strong>'+esc(value)+'</strong><small>'+esc(meta)+'</small></article>';
+}
+function proDashboard(){
+  proAppend("proDashboard",
+    '<section class="panel pro-operations"><div class="panel-head"><div><h3>Front Desk Command Center</h3><p>Live operational controls for arrivals, departures, room readiness and exceptions.</p></div><div class="pro-toolbar"><select id="proRange"><option value="today">Today</option><option value="7">Next 7 days</option><option value="30">Next 30 days</option></select><button class="secondary" data-pro-action="refresh">Refresh</button></div></div>'+
+    '<div class="stats-grid pro-kpis" id="proKpis"></div>'+
+    '<div class="pro-grid-3"><div class="pro-card"><h4>Arrivals</h4><div id="proArrivals"></div></div><div class="pro-card"><h4>Departures</h4><div id="proDepartures"></div></div><div class="pro-card"><h4>Exceptions</h4><div id="proExceptions"></div></div></div>'+
+    '<div class="pro-grid-2"><div class="pro-card"><h4>Occupancy by room type</h4><div id="proOccupancy"></div></div><div class="pro-card"><h4>Activity audit</h4><div id="proAudit"></div></div></div></section>');
+  const t=totals(),paid=state.bookings.filter(b=>b.paymentStatus==="Paid").reduce((s,b)=>s+(parseFloat(String(b.amount).replace(/[^0-9.]/g,""))||0),0);
+  const arrivals=state.bookings.filter(b=>b.status==="Reserved"&&b.checkIn==="Today");
+  const departures=state.bookings.filter(b=>b.status==="Checked in"&&b.checkOut);
+  const exceptions=state.rooms.filter(r=>["Maintenance","Cleaning"].includes(r.status));
+  $("#proKpis").innerHTML=proStat("Occupancy",t.occupancy+"%",t.occupied+" of "+t.total+" rooms")+proStat("Available",String(t.available),t.available+" rooms ready")+proStat("Unsettled",proMoney(t.revenue-paid),state.bookings.length+" reservations")+proStat("Exceptions",String(exceptions.length),t.maintenance+" maintenance · "+t.cleaning+" cleaning");
+  const line=(b,action,label)=>'<div class="pro-line"><div><strong>'+esc(b.guest)+'</strong><small>'+esc(b.room)+' · '+esc(b.checkOut||b.checkIn||"")+'</small></div><button class="table-action" data-pro-action="'+action+'" data-id="'+esc(b.id)+'">'+label+'</button></div>';
+  $("#proArrivals").innerHTML=arrivals.length?arrivals.map(b=>line(b,"checkin","Check in")).join(""):'<span class="pro-muted">No scheduled arrivals.</span>';
+  $("#proDepartures").innerHTML=departures.length?departures.map(b=>line(b,"checkout","Check out")).join(""):'<span class="pro-muted">No scheduled departures.</span>';
+  $("#proExceptions").innerHTML=exceptions.length?exceptions.map(r=>'<div class="pro-line"><div><strong>Room '+esc(r.id)+'</strong><small>'+esc(r.type)+' · '+esc(r.status)+'</small></div><button class="table-action" data-pro-action="room" data-id="'+esc(r.id)+'">Manage</button></div>').join(""):'<span class="pro-muted">No exceptions.</span>';
+  const types=[...new Set(state.rooms.map(r=>r.type))];
+  $("#proOccupancy").innerHTML=types.map(type=>{const rs=state.rooms.filter(r=>r.type===type),o=rs.filter(r=>r.status==="Checked in").length,p=rs.length?Math.round(o/rs.length*100):0;return '<div class="pro-bar"><span>'+esc(type)+'</span><div><i style="width:'+p+'%"></i></div><strong>'+p+'%</strong></div>';}).join("");
+  $("#proAudit").innerHTML=proData.audit.slice(0,5).map(x=>'<div class="pro-audit"><strong>'+esc(x.action)+'</strong><small>'+esc(x.detail)+' · '+new Date(x.at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})+'</small></div>').join("")||'<span class="pro-muted">No activity yet.</span>';
+}
+function proReservations(){
+  proAppend("proReservations",
+    '<section class="panel pro-operations"><div class="panel-head"><div><h3>Reservation Operations</h3><p>Filter by stay state and open the complete operational record.</p></div><div class="pro-toolbar"><select id="reservationStateFilter"><option value="All">All statuses</option><option>Reserved</option><option>Checked in</option><option>Checked out</option></select><select id="reservationPaymentFilter"><option value="All">All payments</option><option>Paid</option><option>Pending</option><option>Refunded</option></select></div></div><div class="table-wrap"><table><thead><tr><th>Guest</th><th>Stay</th><th>Room</th><th>Payment</th><th>Actions</th></tr></thead><tbody id="proReservationRows"></tbody></table></div></section>');
+  function render(){
+    const sf=$("#reservationStateFilter").value,pf=$("#reservationPaymentFilter").value;
+    const rows=state.bookings.filter(b=>(sf==="All"||b.status===sf)&&(pf==="All"||(b.paymentStatus||"Pending")===pf));
+    $("#proReservationRows").innerHTML=rows.map(b=>'<tr><td><strong>'+esc(b.guest)+'</strong><br><small>'+esc(b.id)+'</small></td><td>'+esc(b.checkIn)+' → '+esc(b.checkOut)+'</td><td>'+esc(b.room)+'</td><td>'+badge(b.paymentStatus||"Pending")+'<br><small>'+esc(b.paymentMethod||"—")+'</small></td><td><div class="row-actions"><button data-pro-action="details" data-id="'+esc(b.id)+'">Details</button><button data-pro-action="edit-booking" data-id="'+esc(b.id)+'">Edit</button></div></td></tr>').join("")||'<tr><td colspan="5" class="empty">No reservations match the filters.</td></tr>';
+  }
+  $("#reservationStateFilter").onchange=render;$("#reservationPaymentFilter").onchange=render;render();
+}
+function proRooms(){
+  proAppend("proRooms",
+    '<section class="panel pro-operations"><div class="panel-head"><div><h3>Room Control Board</h3><p>Operational state, rate and service readiness at a glance.</p></div><div class="pro-toolbar"><button class="secondary" data-pro-action="bulk-clean">Create cleaning tasks</button></div></div><div class="pro-room-grid" id="proRoomGrid"></div></section>');
+  $("#proRoomGrid").innerHTML=state.rooms.map(r=>'<button class="pro-room-card room-'+r.status.toLowerCase().replaceAll(" ","-")+'" data-pro-action="room" data-id="'+esc(r.id)+'"><strong>'+esc(r.id)+'</strong><span>'+esc(r.type)+'</span><b>'+esc(r.status)+'</b><small>'+esc(r.rate)+'/night</small></button>').join("");
+}
+function proGuests(){
+  proAppend("proGuests",
+    '<section class="panel pro-operations"><div class="panel-head"><div><h3>Guest Intelligence</h3><p>Stay history, preferences and operational notes.</p></div><input class="pro-inline-search" id="guestProSearch" placeholder="Search guest..."></div><div class="pro-guest-grid" id="proGuestGrid"></div></section>');
+  function render(q=""){const list=state.guests.filter(g=>g.toLowerCase().includes(q.toLowerCase()));$("#proGuestGrid").innerHTML=list.map(g=>{const bs=state.bookings.filter(b=>b.guest===g),active=bs.find(b=>b.status!=="Checked out");return '<article class="pro-guest"><div class="avatar">'+esc(g.split(" ").map(x=>x[0]).join("").slice(0,2))+'</div><div><strong>'+esc(g)+'</strong><small>'+bs.length+' stay(s) · '+esc(active?.status||"No active stay")+'</small><p>'+esc(proData.notes[g]||"No guest notes")+'</p><button class="table-action" data-pro-action="guest-note" data-guest="'+esc(g)+'">Update notes</button></div></article>';}).join("")||'<span class="pro-muted">No guests found.</span>'}
+  $("#guestProSearch").oninput=e=>render(e.target.value);render();
+}
+function proHousekeeping(){
+  proAppend("proHousekeeping",
+    '<section class="panel pro-operations"><div class="panel-head"><div><h3>Housekeeping Control</h3><p>Prioritize turnover, assign work and close completed tasks.</p></div><div class="pro-toolbar"><select id="hkFilter"><option>All</option><option>Pending</option><option>In progress</option><option>Completed</option></select><button class="secondary" data-pro-action="auto-hk">Auto-create turnover</button></div></div><div id="proHkBoard"></div></section>');
+  function render(){const f=$("#hkFilter").value,ts=state.tasks.filter(t=>f==="All"||t.status===f);$("#proHkBoard").innerHTML='<div class="pro-task-grid">'+ts.map(t=>'<article class="pro-task"><div><strong>Room '+esc(t.room)+'</strong>'+badge(t.status)+'</div><h4>'+esc(t.task)+'</h4><small>Assigned to '+esc(t.assignee)+'</small><button class="table-action" data-pro-action="task" data-id="'+esc(t.id)+'">Update task</button></article>').join("")+'</div>'}
+  $("#hkFilter").onchange=render;render();
+}
+function proPayments(){
+  proAppend("proPayments",
+    '<section class="panel pro-operations"><div class="panel-head"><div><h3>Payment Ledger</h3><p>Track settlement state, method and transaction references.</p></div><button class="secondary" data-pro-action="reconcile">Reconcile ledger</button></div><div class="table-wrap"><table><thead><tr><th>Reference</th><th>Booking</th><th>Amount</th><th>Method</th><th>Status</th></tr></thead><tbody id="proPaymentRows"></tbody></table></div></section>');
+  $("#proPaymentRows").innerHTML=state.bookings.map(b=>{let tx=proData.transactions.find(x=>x.bookingId===b.id);return '<tr><td><strong>'+esc(tx?.id||"Not recorded")+'</strong></td><td>'+esc(b.id)+' · '+esc(b.guest)+'</td><td>'+esc(b.amount)+'</td><td>'+esc(b.paymentMethod||"—")+'</td><td>'+badge(b.paymentStatus||"Pending")+'</td></tr>'}).join("");
+}
+function proReports(){
+  proAppend("proReports",
+    '<section class="panel pro-operations"><div class="panel-head"><div><h3>Management Analytics</h3><p>Operational KPIs and exportable data for decision making.</p></div><div class="pro-toolbar"><button class="secondary" data-pro-action="export-csv">Export CSV</button><button class="secondary" data-pro-action="backup">Backup data</button></div></div><div class="pro-grid-2"><div class="pro-card"><h4>Reservation mix</h4><div id="proMix"></div></div><div class="pro-card"><h4>Housekeeping performance</h4><div id="proHkReport"></div></div></div></section>');
+  const counts={Reserved:0,"Checked in":0,"Checked out":0};state.bookings.forEach(b=>counts[b.status]=(counts[b.status]||0)+1);
+  $("#proMix").innerHTML=Object.entries(counts).map(([k,v])=>'<div class="pro-bar"><span>'+esc(k)+'</span><div><i style="width:'+Math.round(v/Math.max(state.bookings.length,1)*100)+'%"></i></div><strong>'+v+'</strong></div>').join("");
+  const done=state.tasks.filter(t=>t.status==="Completed").length,total=state.tasks.length;
+  $("#proHkReport").innerHTML='<div class="pro-big-number">'+(total?Math.round(done/total*100):0)+'%</div><small>'+done+' of '+total+' tasks completed</small><div class="pro-bar"><span>Completion</span><div><i style="width:'+(total?done/total*100:0)+'%"></i></div><strong>'+done+'</strong></div>';
+}
+function proSettings(){
+  proAppend("proSettings",
+    '<section class="panel pro-operations"><div class="panel-head"><div><h3>Operational Controls</h3><p>Protect, export and restore the local demo dataset.</p></div></div><div class="settings-grid"><button class="pro-setting-action" data-pro-action="backup"><strong>Export backup</strong><span>Download all current records as JSON</span></button><button class="pro-setting-action" data-pro-action="restore"><strong>Restore demo data</strong><span>Reset the browser dataset to the original sample</span></button><button class="pro-setting-action" data-pro-action="clear-audit"><strong>Clear audit log</strong><span>Remove locally stored activity history</span></button><button class="pro-setting-action" data-pro-action="compact"><strong>Compact workspace</strong><span>Toggle dense operational layout</span></button></div></section>');
+}
+const _dashboard=dashboard,_reservations=reservations,_rooms=rooms,_guests=guests,_housekeeping=housekeeping,_payments=payments,_reports=reports,_settings=settings;
+dashboard=function(){_dashboard();proDashboard();};
+reservations=function(){_reservations();proReservations();};
+rooms=function(){_rooms();proRooms();};
+guests=function(){_guests();proGuests();};
+housekeeping=function(){_housekeeping();proHousekeeping();};
+payments=function(){_payments();proPayments();};
+reports=function(){_reports();proReports();};
+settings=function(){_settings();proSettings();};
+
+document.addEventListener("change",e=>{
+  if(e.target.id==="proRange"){proDashboard();}
+});
+document.addEventListener("click",e=>{
+  const a=e.target.closest("[data-pro-action]");if(!a)return;
+  const type=a.dataset.proAction,id=a.dataset.id,guest=a.dataset.guest;
+  if(type==="refresh"){setSection(state.section);return;}
+  if(type==="checkin"||type==="checkout"){openAction(type,id);return;}
+  if(type==="payment"){openAction("payment",id);return;}
+  if(type==="details"){
+    const b=proBooking(id);if(!b)return;
+    proOpen("Reservation "+b.id,"Complete reservation record",
+      '<div class="pro-detail-grid"><div><small>Guest</small><strong>'+esc(b.guest)+'</strong></div><div><small>Room</small><strong>'+esc(b.room)+'</strong></div><div><small>Check-in</small><strong>'+esc(b.checkIn)+'</strong></div><div><small>Check-out</small><strong>'+esc(b.checkOut)+'</strong></div><div><small>Amount</small><strong>'+esc(b.amount)+'</strong></div><div><small>Status</small><strong>'+esc(b.status)+'</strong></div></div>',
+      ()=>true);return;
+  }
+  if(type==="edit-booking"){
+    const b=proBooking(id);if(!b)return;
+    proOpen("Edit reservation","Update stay dates and room",
+      '<label>Guest<input name="guest" value="'+esc(b.guest)+'" required></label><div class="form-row"><label>Check-in<input type="date" name="checkIn" value="'+esc(b.checkIn) +'"></label><label>Check-out<input type="date" name="checkOut" value="'+esc(b.checkOut)+'"></label></div><label>Room<input name="room" value="'+esc(b.room)+'"></label><label>Amount<input name="amount" value="'+esc(b.amount)+'"></label>',
+      d=>{b.guest=String(d.get("guest"));b.checkIn=String(d.get("checkIn"));b.checkOut=String(d.get("checkOut"));b.room=String(d.get("room"));b.amount=String(d.get("amount"));saveAll();proAudit("Reservation updated",b.id);setSection("Reservations");});return;
+  }
+  if(type==="room"){
+    const r=state.rooms.find(x=>x.id===id);if(!r)return;
+    proOpen("Room "+r.id,"Change operational status and rate",
+      '<label>Status<select name="status">'+["Available","Checked in","Cleaning","Maintenance"].map(s=>'<option '+(r.status===s?"selected":"")+'>'+s+'</option>').join("")+'</select></label><label>Nightly rate<input name="rate" value="'+esc(r.rate)+'"></label>',
+      d=>{r.status=String(d.get("status"));r.rate=String(d.get("rate"));saveAll();proAudit("Room updated","Room "+r.id+" → "+r.status);setSection("Rooms");});return;
+  }
+  if(type==="task"){
+    const t=state.tasks.find(x=>x.id===id);if(!t)return;
+    proOpen("Housekeeping task","Update assignment and status",
+      '<label>Task<input name="task" value="'+esc(t.task)+'"></label><label>Assignee<input name="assignee" value="'+esc(t.assignee)+'"></label><label>Status<select name="status">'+["Pending","In progress","Completed"].map(s=>'<option '+(t.status===s?"selected":"")+'>'+s+'</option>').join("")+'</select></label>',
+      d=>{t.task=String(d.get("task"));t.assignee=String(d.get("assignee"));t.status=String(d.get("status"));saveAll();proAudit("Housekeeping updated","Room "+t.room+" → "+t.status);setSection("Housekeeping");});return;
+  }
+  if(type==="guest-note"){
+    const g=guest;proOpen("Guest notes",g,'<label>Operational note<textarea name="note" rows="5">'+esc(proData.notes[g]||"")+'</textarea></label>',d=>{proData.notes[g]=String(d.get("note")||"");proSave(PRO_STORAGE.notes,proData.notes);proAudit("Guest note updated",g);setSection("Guests");});return;
+  }
+  if(type==="bulk-clean"){
+    const candidates=state.rooms.filter(r=>r.status==="Cleaning");
+    candidates.forEach(r=>{if(!state.tasks.some(t=>t.room===r.id&&t.status!=="Completed"))state.tasks.push({id:proId("HK"),room:r.id,task:"Turnover cleaning",assignee:"Unassigned",status:"Pending"});});
+    saveAll();proAudit("Cleaning tasks created",candidates.length+" rooms");setSection("Rooms");return;
+  }
+  if(type==="auto-hk"){
+    state.rooms.filter(r=>r.status==="Cleaning").forEach(r=>{if(!state.tasks.some(t=>t.room===r.id&&t.status!=="Completed"))state.tasks.push({id:proId("HK"),room:r.id,task:"Turnover cleaning",assignee:"Housekeeping",status:"Pending"});});
+    saveAll();proAudit("Turnover tasks generated","Cleaning rooms");setSection("Housekeeping");return;
+  }
+  if(type==="reconcile"){
+    state.bookings.forEach(b=>{if(!proData.transactions.some(x=>x.bookingId===b.id))proData.transactions.push({id:proId("TX"),bookingId:b.id,amount:b.amount,method:b.paymentMethod||"Card",status:b.paymentStatus||"Pending"});});
+    proSave(PRO_STORAGE.payments,proData.transactions);proAudit("Ledger reconciled",state.bookings.length+" reservations");setSection("Payments");return;
+  }
+  if(type==="export-csv"){
+    const header="Booking,Guest,Room,CheckIn,CheckOut,Status,Amount,PaymentStatus,PaymentMethod";
+    const rows=state.bookings.map(b=>[b.id,b.guest,b.room,b.checkIn,b.checkOut,b.status,b.amount,b.paymentStatus,b.paymentMethod].map(v=>'"'+String(v??"").replaceAll('"','""')+'"').join(","));
+    const blob=new Blob([[header].concat(rows).join("\n")],{type:"text/csv;charset=utf-8"});const u=URL.createObjectURL(blob);const x=document.createElement("a");x.href=u;x.download="stayflow-reservations.csv";x.click();URL.revokeObjectURL(u);proAudit("CSV exported","Reservations");
+    return;
+  }
+  if(type==="backup"){
+    const payload={version:1,exportedAt:new Date().toISOString(),bookings:state.bookings,rooms:state.rooms,guests:state.guests,tasks:state.tasks,notes:proData.notes,transactions:proData.transactions,audit:proData.audit};
+    const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const u=URL.createObjectURL(blob);const x=document.createElement("a");x.href=u;x.download="stayflow-backup.json";x.click();URL.revokeObjectURL(u);proAudit("Backup exported","Complete local dataset");return;
+  }
+  if(type==="restore"){
+    if(confirm("Restore the original StayFlow demo data? Current local changes will be replaced.")){Object.keys(STORAGE).forEach(k=>{try{localStorage.removeItem(STORAGE[k]);}catch(_){}});location.reload();}return;
+  }
+  if(type==="clear-audit"){proData.audit=[];proSave(PRO_STORAGE.audit,[]);setSection(state.section);return;}
+  if(type==="compact"){document.body.classList.toggle("compact-theme");return;}
+});
