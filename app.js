@@ -208,9 +208,9 @@ function openAction(type, id) {
     subtitle = booking.guest + " · " + booking.id;
     fields = '<label>Payment status<select name="status"><option' + (booking.paymentStatus === "Paid" ? " selected" : "") + '>Paid</option><option' + (booking.paymentStatus === "Pending" ? " selected" : "") + '>Pending</option><option' + (booking.paymentStatus === "Refunded" ? " selected" : "") + '>Refunded</option></select></label><label>Payment method<select name="method"><option>Card</option><option>Cash</option><option>Bank transfer</option><option>Crypto / USDT</option></select></label>';
   } else if (type === "room-status") {
-    title = "Change room status";
-    subtitle = "Room " + room.id + " · " + room.type;
-    fields = '<label>Status<select name="status"><option>Available</option><option>Checked in</option><option>Cleaning</option><option>Maintenance</option></select></label>';
+    title = id === "__new__" ? "Add room" : "Change room status";
+    subtitle = id === "__new__" ? "Create a new room in the inventory" : "Room " + room.id + " · " + room.type;
+    fields = id === "__new__" ? '<p class="modal-note">You will enter the room details after saving this action.</p>' : '<label>Status<select name="status"><option>Available</option><option>Checked in</option><option>Cleaning</option><option>Maintenance</option></select></label>';
   } else if (type === "task-status") {
     title = "Advance housekeeping task";
     subtitle = "Room " + task.room + " · " + task.task;
