@@ -44,7 +44,7 @@ function shell(title, subtitle, body) {
 }
 
 function bookingPanel() {
-  return '<section class="panel bookings-panel"><div class="panel-head"><div><h3>Recent reservations</h3><p>Latest booking activity</p></div><div class="panel-tools"><input id="bookingSearch" placeholder="Search reservations..." aria-label="Search reservations"><a href="#" data-section="Reservations">View all →</a></div></div><div class="table-wrap"><table><thead><tr><th>Booking</th><th>Guest</th><th>Room</th><th>Check-in</th><th>Check-out</th><th>Status</th><th>Amount</th></tr></thead><tbody id="bookingRows"></tbody></table></div></section>';
+  return '<section class="panel bookings-panel"><div class="panel-head"><div><h3>Recent reservations</h3><p>Latest booking activity</p></div><div class="panel-tools"><input id="bookingSearch" placeholder="Search reservations..." aria-label="Search reservations"><a href="#" data-section="Reservations">View all →</a></div></div><div class="table-wrap"><table><thead><tr><th>Booking</th><th>Guest</th><th>Room</th><th>Check-in</th><th>Check-out</th><th>Status</th><th>Amount</th><th>Actions</th></tr></thead><tbody id="bookingRows"></tbody></table></div></section>';
 }
 
 function openAction(type, bookingId) {
@@ -137,7 +137,7 @@ function housekeeping() {
 function payments() {
   tablePage("Payments", "Track charges and payment status",
     ["Booking","Guest","Amount","Status"],
-    state.bookings.map((booking) => "<tr><td><strong>" + esc(booking.id) + "</strong></td><td>" + esc(booking.guest) + "</td><td>" + esc(booking.amount) + "</td><td>" + badge(booking.status === "Checked out" ? "Paid" : "Pending") + "</td></tr>")
+    state.bookings.map((booking) => "<tr><td><strong>" + esc(booking.id) + "</strong></td><td>" + esc(booking.guest) + "</td><td>" + esc(booking.amount) + "</td><td>" + badge(booking.paymentStatus || (booking.status === "Checked out" ? "Paid" : "Pending")) + "</td></tr>")
   );
 }
 
