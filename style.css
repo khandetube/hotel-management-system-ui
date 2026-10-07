@@ -227,3 +227,54 @@ body.dark-theme{--bg:#0b1220;--surface:#111a2a;--surface-2:#151f31;--text:#edf2f
   .stat-card::after{right:10px;bottom:10px;width:40px;height:40px;border-radius:12px}
   .stat-card::before{width:95px;height:95px}
 }
+
+
+/* Toolbar recovery patch — keep sidebar/top toolbar visible and stable */
+.sidebar{
+  background:linear-gradient(180deg,#111827 0%,#0d1422 100%) !important;
+  color:#eef2ff !important;
+}
+.sidebar .nav a,.sidebar .nav-label,.sidebar .brand,.sidebar .hotel-switcher,.sidebar .user,
+.sidebar .support-card{color:inherit}
+.main{background:var(--bg,#f5f7fb)!important;color:var(--text,#182238)}
+.topbar{
+  color:#182238!important;
+  background:rgba(255,255,255,.96)!important;
+  border-bottom:1px solid #e6eaf2!important;
+  box-shadow:0 1px 0 rgba(20,30,50,.04),0 8px 24px rgba(30,42,70,.035)!important;
+}
+.topbar h1,.topbar p{color:inherit!important}
+.search{
+  background:#f7f8fc!important;
+  border:1px solid #e2e6ef!important;
+  color:#27324a!important;
+}
+.search input{color:#27324a!important;background:transparent!important}
+.search input::placeholder{color:#8a94a6!important}
+.icon-btn{
+  background:#fff!important;
+  color:#58657c!important;
+  border:1px solid #e1e6ef!important;
+}
+.icon-btn b{background:#6678ef!important;color:#fff!important}
+.avatar.small{background:linear-gradient(145deg,#7384f5,#4f63e8)!important;color:#fff!important}
+.top-icon{stroke:currentColor!important;color:inherit!important}
+
+/* Explicit SVG visibility: don't let inherited 3D/widget rules hide icons */
+.nav-icon,.hotel-icon,.search-icon{visibility:visible!important;opacity:1!important}
+.nav-icon svg,.hotel-icon svg,.search-icon svg,.top-icon{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  fill:none!important;
+  stroke:currentColor!important;
+}
+.nav a .nav-icon{
+  flex:0 0 34px!important;
+  overflow:visible!important;
+}
+.nav a.active .nav-icon{color:#fff!important}
+
+/* 3D decorative layers must stay behind text/icons */
+.stat-card::before,.stat-card::after,.panel::before{z-index:0!important;pointer-events:none}
+.stat-card>*,.panel-head,.panel-tools,.room-list,.task-summary,.table-wrap{position:relative;z-index:1}
