@@ -356,3 +356,69 @@ body.dark-theme{--bg:#0b1220;--surface:#111a2a;--surface-2:#151f31;--text:#edf2f
     display:none!important;
   }
 }
+
+
+/* FINAL RESPONSIVE LAYOUT — fluid sidebar + content */
+.app-shell{width:100%;min-width:0;overflow-x:hidden}
+.sidebar{width:248px;min-width:0;flex:0 0 248px}
+.main{width:auto;max-width:none;min-width:0;flex:1 1 auto;margin-left:248px;overflow-x:hidden}
+.content{width:100%;min-width:0}
+.stats-grid,.grid-two{min-width:0}
+.stat-card,.panel{min-width:0}
+
+@media (max-width:1100px){
+  .sidebar{width:220px;flex-basis:220px}
+  .main{margin-left:220px}
+  .content{padding-left:24px;padding-right:24px}
+  .topbar{padding-left:24px;padding-right:24px}
+}
+
+@media (max-width:760px){
+  .sidebar{
+    width:72px!important;
+    min-width:72px!important;
+    max-width:72px!important;
+    flex:0 0 72px!important;
+    padding:18px 8px!important;
+    overflow:hidden!important;
+  }
+  .main{
+    margin-left:72px!important;
+    width:calc(100% - 72px)!important;
+    max-width:calc(100% - 72px)!important;
+    min-width:0!important;
+  }
+  .sidebar .brand{justify-content:center;padding:0!important}
+  .sidebar .brand>span:last-child,
+  .sidebar .hotel-switcher>div,
+  .sidebar .hotel-switcher>span:last-child,
+  .sidebar .nav-label,
+  .sidebar .sidebar-footer,
+  .sidebar .nav a>span:not(.nav-icon){display:none!important}
+  .sidebar .hotel-switcher{margin:20px 0 18px;padding:8px;justify-content:center}
+  .sidebar .nav{width:100%;gap:7px!important}
+  .sidebar .nav a{
+    width:100%!important;
+    min-height:46px!important;
+    padding:6px!important;
+    justify-content:center!important;
+    gap:0!important;
+  }
+  .sidebar .nav a .nav-icon,
+  .sidebar .nav span.nav-icon{
+    width:36px!important;
+    min-width:36px!important;
+    height:36px!important;
+    flex:0 0 36px!important;
+  }
+  .topbar{padding-left:18px;padding-right:18px}
+  .content{padding:20px 18px 24px}
+}
+
+@media (max-width:480px){
+  .sidebar{width:60px!important;min-width:60px!important;max-width:60px!important;flex-basis:60px!important}
+  .main{margin-left:60px!important;width:calc(100% - 60px)!important;max-width:calc(100% - 60px)!important}
+  .sidebar .nav a .nav-icon,.sidebar .nav span.nav-icon{width:34px!important;min-width:34px!important;height:34px!important}
+  .topbar{padding:15px 14px}
+  .content{padding:16px 12px 20px}
+}
