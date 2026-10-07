@@ -39,6 +39,10 @@ const state = {
   guests:load(STORAGE.guests, defaults.guests),
   tasks:load(STORAGE.tasks, defaults.tasks)
 };
+state.bookings = Array.isArray(state.bookings) ? state.bookings : JSON.parse(JSON.stringify(defaults.bookings));
+state.rooms = Array.isArray(state.rooms) ? state.rooms : JSON.parse(JSON.stringify(defaults.rooms));
+state.guests = Array.isArray(state.guests) ? state.guests : JSON.parse(JSON.stringify(defaults.guests));
+state.tasks = Array.isArray(state.tasks) ? state.tasks : JSON.parse(JSON.stringify(defaults.tasks));
 
 function load(key, fallback) {
   try {
@@ -69,9 +73,13 @@ const badge = (value) => {
 
 function shell(title, subtitle, body) {
   state.section = title;
-  $("#pageTitle").textContent = title;
-  $("#pageSubtitle").textContent = subtitle;
-  $("#workspace").innerHTML = body;
+  const pageTitle = $("#pageTitle");
+  const pageSubtitle = $("#pageSubtitle");
+  const workspace = $("#workspace");
+  if (!pageTitle || !pageSubtitle || !workspace) throw new Error("StayFlow shell elements are missing.");
+  pageTitle.textContent = title;
+  pageSubtitle.textContent = subtitle;
+  workspace.innerHTML = body;
   document.querySelectorAll("[data-section]").forEach((item) => {
     item.classList.toggle("active", item.dataset.section === title);
   });
@@ -369,17 +377,32 @@ document.addEventListener("keydown",(event) => {
   }
 });
 
-document.addEventListener("DOMContentLoaded",() => {
-  $("#yearLabel").textContent = new Date().getFullYear();
-  const savedHotel = localStorage.getItem(STORAGE.hotel);
-  if (savedHotel) document.querySelector(".hotel-switcher strong").textContent = savedHotel;
-  const notificationBtn = $("#notificationBtn");
-  if (notificationBtn) notificationBtn.addEventListener("click",() => {
-    state.notifications = 0;
-    $("#notificationCount").textContent = "0";
-  });
-  const support = document.querySelector(".support-card button");
-  if (support) support.dataset.action = "support";
-  applyTheme();
-  dashboard();
-});
+function bootStayFlow() {
+  try {
+    const year = $("#yearLabel");
+    if (year) year.textContent = new Date().getFullYear();
+    const savedHotel = localStorage.getItem(STORAGE.hotel);
+    const hotelName = document.querySelector(".hotel-switcher strong");
+    if (savedHotel && hotelName) hotelName.textContent = savedHotel;
+    const notificationBtn = $("#notificationBtn");
+    if (notificationBtn) notificationBtn.addEventListener("click",() => {
+      state.notifications = 0;
+      const count = $("#notificationCount");
+      if (count) count.textContent = "0";
+    });
+    const support = document.querySelector(".support-card button");
+    if (support) support.dataset.action = "support";
+    applyTheme();
+    dashboard();
+  } catch (error) {
+    console.error("StayFlow boot failed:", error);
+    const workspace = $("#workspace");
+    if (workspace) workspace.innerHTML =
+      '<section class="panel boot-error"><div class="panel-head"><div><h3>StayFlow could not initialize</h3><p>The page loaded, but the interactive layer hit a runtime error.</p></div></div><p class="boot-error-text">' + esc(error && error.message ? error.message : error) + '</p><button class="primary" data-action="reset-demo">Reset demo data</button></section>';
+  }
+}
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bootStayFlow, {once:true});
+} else {
+  bootStayFlow();
+}
