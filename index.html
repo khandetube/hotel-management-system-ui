@@ -221,7 +221,7 @@ function settings() {
   const theme = localStorage.getItem(STORAGE.theme) || "light";
   shell("Settings","Configure the StayFlow workspace",
     '<div class="welcome-row"><div><h2>System settings</h2><p>Preferences persist in this browser.</p></div><button class="primary" data-action="save-settings">Save changes</button></div>' +
-    '<section class="panel"><div class="form-row"><label>Hotel name<input id="hotelName" value="' + esc(hotel) + '"></label><label>Interface theme<select id="themeSelect"><option value="light"' + (theme === "light" ? " selected" : "") + '>Light</option><option value="compact"' + (theme === "compact" ? " selected" : "") + '>Compact</option></select></label></div><div class="settings-grid"><div><strong>Reservation records</strong><span>' + state.bookings.length + '</span></div><div><strong>Rooms</strong><span>' + state.rooms.length + '</span></div><div><strong>Guests</strong><span>' + state.guests.length + '</span></div><div><strong>Housekeeping tasks</strong><span>' + state.tasks.length + '</span></div></div></section>');
+    '<section class="panel"><div class="form-row"><label>Hotel name<input id="hotelName" value="' + esc(hotel) + '"></label><label>Interface theme<select id="themeSelect"><option value="light"' + (theme === "light" ? " selected" : "") + '>Light</option><option value="compact"' + (theme === "compact" ? " selected" : "") + '>Compact</option><option value="dark"' + (theme === "dark" ? " selected" : "") + '>Dark</option></select></label></div><div class="settings-grid"><div><strong>Reservation records</strong><span>' + state.bookings.length + '</span></div><div><strong>Rooms</strong><span>' + state.rooms.length + '</span></div><div><strong>Guests</strong><span>' + state.guests.length + '</span></div><div><strong>Housekeeping tasks</strong><span>' + state.tasks.length + '</span></div></div></section>');
 }
 
 function openAction(type, id) {
@@ -280,7 +280,9 @@ function globalSearch(query) {
 }
 
 function applyTheme() {
-  document.body.classList.toggle("compact-theme", (localStorage.getItem(STORAGE.theme) || "light") === "compact");
+  const theme = localStorage.getItem(STORAGE.theme) || "light";
+  document.body.classList.toggle("compact-theme", theme === "compact");
+  document.body.classList.toggle("dark-theme", theme === "dark");
 }
 
 function setSection(section) {
