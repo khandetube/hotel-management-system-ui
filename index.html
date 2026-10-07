@@ -462,4 +462,15 @@ function openCommandPalette(){
   el.addEventListener('click',e=>{if(e.target.closest('[data-close-palette]'))el.remove();});
 }
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openCommandPalette();}if(e.key==='Escape')document.getElementById('commandPalette')?.remove();});
+</script><script>
+(function(){
+  function goHome(e){
+    const a=e.target.closest('[data-section="Dashboard"], .brand, [aria-label="Home"], [title="Home"]');
+    if(!a)return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    try{ if(typeof window.setSection==='function') window.setSection('Dashboard'); else if(typeof window.dashboard==='function') window.dashboard(); }catch(err){ console.error('StayFlow home navigation:',err); }
+    document.querySelectorAll('.nav a[data-section]').forEach(x=>x.classList.toggle('active',x.dataset.section==='Dashboard'));
+  }
+  document.addEventListener('click',goHome,true);
+})();
 </script></body></html>
