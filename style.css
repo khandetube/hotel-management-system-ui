@@ -323,3 +323,36 @@ body.dark-theme{--bg:#0b1220;--surface:#111a2a;--surface-2:#151f31;--text:#edf2f
 
 /* Prevent the new 3D decoration layer from covering the sidebar */
 .sidebar::before,.sidebar::after{z-index:-1!important;pointer-events:none!important}
+
+
+/* FINAL MOBILE SIDEBAR ICON FIX
+   The compact/mobile rule ".nav span{display:none}" also matched .nav-icon.
+   Keep the icon container visible while hiding only the text labels. */
+@media(max-width:760px){
+  .sidebar .nav span.nav-icon{
+    display:inline-grid!important;
+    visibility:visible!important;
+    opacity:1!important;
+    width:32px!important;
+    min-width:32px!important;
+    height:32px!important;
+    place-items:center!important;
+    color:#aebcff!important;
+    flex:0 0 32px!important;
+  }
+  .sidebar .nav a.active span.nav-icon{
+    color:#ffffff!important;
+  }
+  .sidebar .nav span.nav-icon svg{
+    display:block!important;
+    visibility:visible!important;
+    opacity:1!important;
+    width:18px!important;
+    height:18px!important;
+    stroke:currentColor!important;
+    fill:none!important;
+  }
+  .sidebar .nav a span:not(.nav-icon){
+    display:none!important;
+  }
+}
