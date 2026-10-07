@@ -275,7 +275,7 @@ document.addEventListener("click", (event) => {
   if (!action) return;
   event.preventDefault();
   const type = action.dataset.action;
-  if (type === "new-booking") return newBooking();
+  if (type === "home-dashboard") { try { if (typeof window.setSection === "function") window.setSection("Dashboard"); else dashboard(); } catch (_) { dashboard(); } return; }\n  if (type === "new-booking") return newBooking();
   if (["checkin","checkout","payment","room-status","task-status","guest-view"].includes(type)) return openAction(type, action.dataset.id || action.dataset.guest);
   if (type === "add-room") return openAction("room-status","__new__");
   if (type === "add-guest") {
