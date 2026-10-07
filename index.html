@@ -24,24 +24,7 @@
 <main class="main">
 <header class="topbar"><div><h1 id="pageTitle">Dashboard</h1><p id="pageSubtitle">Overview of today's hotel operations</p></div>
 <div class="top-actions"><div class="search"><span>⌕</span><input aria-label="Global search" placeholder="Search anything"></div><button class="icon-btn" aria-label="Notifications">♢<b>3</b></button><button class="avatar small">AK</button></div></header>
-<section class="content">
-<div class="welcome-row"><div><h2>Good morning, Alex</h2><p>Here's what is happening at Grand Aurora today.</p></div><button class="primary" data-action="new-booking">＋ New reservation</button></div>
-<div class="stats-grid">
-<article class="stat-card"><div class="stat-top"><span>Occupancy</span><span class="trend up">↗ 8.2%</span></div><strong>78.4%</strong><small>vs. 72.5% last week</small><div class="mini-chart"><i style="height:35%"></i><i style="height:52%"></i><i style="height:42%"></i><i style="height:67%"></i><i style="height:58%"></i><i style="height:78%"></i><i style="height:86%"></i></div></article>
-<article class="stat-card"><div class="stat-top"><span>Today's revenue</span><span class="trend up">↗ 12.4%</span></div><strong>$12,840</strong><small>vs. $11,420 yesterday</small><div class="mini-chart"><i style="height:28%"></i><i style="height:48%"></i><i style="height:43%"></i><i style="height:62%"></i><i style="height:55%"></i><i style="height:72%"></i><i style="height:90%"></i></div></article>
-<article class="stat-card"><div class="stat-top"><span>Arrivals</span><span class="neutral">Today</span></div><strong>24</strong><small>8 more than yesterday</small><div class="progress"><span style="width:72%"></span></div><small>18 rooms ready</small></article>
-<article class="stat-card"><div class="stat-top"><span>Departures</span><span class="neutral">Today</span></div><strong>17</strong><small>5 rooms awaiting checkout</small><div class="progress warning"><span style="width:42%"></span></div><small>12 rooms cleared</small></article>
-</div>
-<div class="grid-two">
-<section class="panel occupancy-panel"><div class="panel-head"><div><h3>Occupancy overview</h3><p>Room occupancy over the last 7 days</p></div><select><option>Last 7 days</option><option>Last 30 days</option></select></div>
-<div class="bar-chart"><div><span style="height:54%"></span><label>Mon</label></div><div><span style="height:68%"></span><label>Tue</label></div><div><span style="height:61%"></span><label>Wed</label></div><div><span style="height:76%"></span><label>Thu</label></div><div><span style="height:71%"></span><label>Fri</label></div><div><span style="height:84%"></span><label>Sat</label></div><div><span style="height:78%"></span><label>Sun</label></div></div></section>
-<section class="panel room-panel"><div class="panel-head"><div><h3>Room status</h3><p>Current room inventory</p></div><a href="#" data-section="Rooms">View all →</a></div>
-<div class="room-list"><div><span class="room-dot occupied"></span><span>Occupied</span><strong>86</strong></div><div><span class="room-dot available"></span><span>Available</span><strong>28</strong></div><div><span class="room-dot cleaning"></span><span>Cleaning</span><strong>12</strong></div><div><span class="room-dot maintenance"></span><span>Maintenance</span><strong>4</strong></div></div>
-<div class="donut"><div><strong>130</strong><small>Total rooms</small></div></div></section></div>
-<section class="panel bookings-panel"><div class="panel-head"><div><h3>Recent reservations</h3><p>Latest booking activity across the property</p></div>
-<div class="panel-tools"><input id="bookingSearch" placeholder="Search reservations..."><a href="#" data-section="Reservations">View all →</a></div></div>
-<div class="table-wrap"><table><thead><tr><th>Booking</th><th>Guest</th><th>Room</th><th>Check-in</th><th>Check-out</th><th>Status</th><th>Amount</th></tr></thead><tbody id="bookingRows"></tbody></table></div></section>
-</section><footer>StayFlow UI concept · <span id="yearLabel"></span> · Portfolio prototype</footer>
+<section class="content"><div id="workspace"></div></section><footer>StayFlow UI concept · <span id="yearLabel"></span> · Portfolio prototype</footer>
 </main></div>
 <dialog id="bookingModal"><form method="dialog" id="newBookingForm"><div class="modal-head"><div><h3>New reservation</h3><p>Create a guest reservation</p></div><button type="button" class="close" data-action="close-modal">×</button></div>
 <label>Guest name<input name="guest" required placeholder="e.g. Sophia Miller"></label><label>Room<input name="room" required placeholder="e.g. Suite 402"></label>
