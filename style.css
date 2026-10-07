@@ -278,3 +278,48 @@ body.dark-theme{--bg:#0b1220;--surface:#111a2a;--surface-2:#151f31;--text:#edf2f
 /* 3D decorative layers must stay behind text/icons */
 .stat-card::before,.stat-card::after,.panel::before{z-index:0!important;pointer-events:none}
 .stat-card>*,.panel-head,.panel-tools,.room-list,.task-summary,.table-wrap{position:relative;z-index:1}
+
+
+/* RIGHT TOOLBAR / SIDEBAR RECOVERY */
+.sidebar{
+  width:260px!important;
+  min-width:260px!important;
+  background:linear-gradient(180deg,#111827 0%,#0b1220 100%)!important;
+  color:#e8ecf7!important;
+  overflow:visible!important;
+}
+.sidebar .nav{display:flex!important;flex-direction:column!important;gap:6px!important}
+.sidebar .nav a{
+  display:flex!important;align-items:center!important;gap:12px!important;
+  min-height:46px!important;color:#aeb8cc!important;background:transparent!important;
+  border-radius:12px!important;position:relative!important;overflow:visible!important;
+}
+.sidebar .nav a:hover{color:#fff!important;background:rgba(255,255,255,.07)!important}
+.sidebar .nav a.active{
+  color:#fff!important;
+  background:linear-gradient(135deg,rgba(102,119,239,.95),rgba(78,91,205,.9))!important;
+  box-shadow:0 8px 22px rgba(78,91,205,.28)!important;
+}
+.sidebar .nav a.active::after{
+  content:""!important;position:absolute!important;right:-1px!important;top:10px!important;
+  width:3px!important;height:26px!important;border-radius:4px!important;background:#fff!important;
+}
+.sidebar .nav a .nav-icon{
+  width:34px!important;height:34px!important;min-width:34px!important;
+  display:grid!important;place-items:center!important;
+  color:currentColor!important;background:rgba(255,255,255,.075)!important;
+  border:1px solid rgba(255,255,255,.09)!important;border-radius:10px!important;
+  box-shadow:0 5px 12px rgba(0,0,0,.18)!important;position:relative!important;z-index:3!important;
+}
+.sidebar .nav a.active .nav-icon{
+  color:#fff!important;background:linear-gradient(145deg,#7e8df8,#596be2)!important;
+  border-color:rgba(255,255,255,.2)!important;
+}
+.sidebar .nav a .nav-icon svg{
+  width:19px!important;height:19px!important;display:block!important;
+  opacity:1!important;visibility:visible!important;stroke:currentColor!important;
+}
+.sidebar .nav a span:not(.nav-icon){display:block!important;visibility:visible!important;opacity:1!important}
+
+/* Prevent the new 3D decoration layer from covering the sidebar */
+.sidebar::before,.sidebar::after{z-index:-1!important;pointer-events:none!important}
