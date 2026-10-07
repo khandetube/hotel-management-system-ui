@@ -275,7 +275,7 @@ document.addEventListener("click", (event) => {
   if (!action) return;
   event.preventDefault();
   const type = action.dataset.action;
-  if (type === "home-dashboard") { try { if (typeof window.setSection === "function") window.setSection("Dashboard"); else dashboard(); } catch (_) { dashboard(); } return; }
+  if (type === "home-dashboard") { try { if (typeof window.setSection === "function") setSection("Dashboard"); else dashboard(); } catch (_) { dashboard(); } return; }
   if (type === "new-booking") return newBooking();
   if (["checkin","checkout","payment","room-status","task-status","guest-view"].includes(type)) return openAction(type, action.dataset.id || action.dataset.guest);
   if (type === "add-room") return openAction("room-status","__new__");
@@ -642,5 +642,5 @@ function replacePrompts(){const old=window.openAction;window.openAction=function
 const oldSet=window.setSection;window.setSection=function(section){if(section==="Calendar"){calendarPage();return}oldSet(section);if(section==="Dashboard")setTimeout(()=>document.querySelector(".pro-operations")?.scrollIntoView({block:"start"}),0)};
 document.addEventListener("click",e=>{const a=e.target.closest("[data-sf-action]");if(!a)return;const n=Number(document.getElementById("sfCalendarDays")?.value||14);if(a.dataset.sfAction==="prev"){window.sfCalendarStart=new Date(window.sfCalendarStart);sfCalendarStart.setDate(sfCalendarStart.getDate()-n);renderCalendar()}if(a.dataset.sfAction==="next"){window.sfCalendarStart=new Date(window.sfCalendarStart);sfCalendarStart.setDate(sfCalendarStart.getDate()+n);renderCalendar()}if(a.dataset.sfAction==="today"){window.sfCalendarStart=new Date();renderCalendar()}});
 document.addEventListener("change",e=>{if(e.target.id==="sfCalendarDays"||e.target.id==="sfCalendarType")renderCalendar()});
-normalize();replacePrompts();window.__stayflowV2={parseStayDate};setTimeout(()=>{try{window.setSection("Dashboard")}catch(e){console.error(e)}},0);const home=document.querySelector(".hotel-icon[data-action=\"home-dashboard\"]");if(home){home.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();try{window.setSection("Dashboard")}catch(_){dashboard()}});}
+normalize();replacePrompts();window.__stayflowV2={parseStayDate};setTimeout(()=>{try{setSection("Dashboard")}catch(e){console.error(e)}},0);const home=document.querySelector(".hotel-icon[data-action=\"home-dashboard\"]");if(home){home.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();try{setSection("Dashboard")}catch(_){dashboard()}});}
 })();
