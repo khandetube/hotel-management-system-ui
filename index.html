@@ -462,4 +462,44 @@ function openCommandPalette(){
   el.addEventListener('click',e=>{if(e.target.closest('[data-close-palette]'))el.remove();});
 }
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openCommandPalette();}if(e.key==='Escape')document.getElementById('commandPalette')?.remove();});
-</script></body></html>
+</script><!-- StayFlow navigation hardening v1 -->
+<script>
+(function(){
+  function bindStayFlowNavigation(){
+    const links=document.querySelectorAll('.sidebar .nav a[data-section]');
+    links.forEach(function(link){
+      if(link.dataset.sfNavBound==='1') return;
+      link.dataset.sfNavBound='1';
+      link.addEventListener('click',function(event){
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const section=this.getAttribute('data-section');
+        try{
+          if(typeof window.setSection==='function'){
+            window.setSection(section);
+          }else{
+            window.location.hash=encodeURIComponent(section);
+          }
+        }catch(error){
+          console.error('StayFlow navigation error:',error);
+        }
+      },true);
+      link.addEventListener('touchend',function(event){
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const section=this.getAttribute('data-section');
+        try{
+          if(typeof window.setSection==='function') window.setSection(section);
+        }catch(error){ console.error('StayFlow touch navigation error:',error); }
+      },{capture:true,passive:false});
+    });
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',bindStayFlowNavigation,{once:true});
+  }else{
+    bindStayFlowNavigation();
+  }
+  window.addEventListener('load',bindStayFlowNavigation,{once:true});
+})();
+</script>
+</body></html>
