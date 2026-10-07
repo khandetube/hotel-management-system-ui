@@ -47,6 +47,19 @@ function bookingPanel() {
   return '<section class="panel bookings-panel"><div class="panel-head"><div><h3>Recent reservations</h3><p>Latest booking activity</p></div><div class="panel-tools"><input id="bookingSearch" placeholder="Search reservations..." aria-label="Search reservations"><a href="#" data-section="Reservations">View all →</a></div></div><div class="table-wrap"><table><thead><tr><th>Booking</th><th>Guest</th><th>Room</th><th>Check-in</th><th>Check-out</th><th>Status</th><th>Amount</th></tr></thead><tbody id="bookingRows"></tbody></table></div></section>';
 }
 
+function openAction(type, bookingId) {
+  const booking = state.bookings.find(b => b.id === bookingId);
+  if (!booking) return;
+  state.action = {type, bookingId};
+  const title = type === "checkin" ? "Check-in guest" : type === "checkout" ? "Check-out guest" : "Update payment";
+  $("#actionTitle").textContent = title;
+  $("#actionSubtitle").textContent = booking.guest + " · " + booking.room;
+  $("#actionFields").innerHTML = type === "payment"
+    ? '<label>Payment status<select name="status"><option>Paid</option><option>Pending</option><option>Refunded</option></select></label><label>Payment method<select name="method"><option>Card</option><option>Cash</option><option>Bank transfer</option><option>Crypto / USDT</option></select></label>'
+    : '<label>Room<input name="room" value="' + esc(booking.room) + '" required></label><label>Notes<textarea name="notes" rows="3" placeholder="Optional operational note"></textarea></label>';
+  $("#actionModal")?.showModal();
+}
+
 function renderBookings(filter = "") {
   const el = $("#bookingRows");
   if (!el) return;
@@ -58,8 +71,8 @@ function renderBookings(filter = "") {
     "<tr><td><strong>" + esc(booking.id) + "</strong></td><td>" + esc(booking.guest) +
     "</td><td>" + esc(booking.room) + "</td><td>" + esc(booking.checkIn) +
     "</td><td>" + esc(booking.checkOut) + "</td><td>" + badge(booking.status) +
-    "</td><td><strong>" + esc(booking.amount) + "</strong></td></tr>"
-  ).join("") || '<tr><td colspan="7" class="empty">No bookings found.</td></tr>';
+    "</td><td><strong>" + esc(booking.amount) + "</strong></td><td><div class=\"row-actions\"><button type=\"button\" data-action=\"checkin\" data-id=\"" + esc(booking.id) + "\">Check-in</button><button type=\"button\" data-action=\"checkout\" data-id=\"" + esc(booking.id) + "\">Check-out</button><button type=\"button\" data-action=\"payment\" data-id=\"" + esc(booking.id) + "\">Payment</button></div></td></tr>"
+  ).join("") || '<tr><td colspan="8" class="empty">No bookings found.</td></tr>';
 }
 
 function dashboard() {
@@ -187,6 +200,12 @@ document.addEventListener("click", (event) => {
     setSection(nav.dataset.section);
     return;
   }
+  const action = event.target.closest("[data-action]");
+  if (action && ["checkin","checkout","payment"].includes(action.dataset.action)) {
+    event.preventDefault();
+    openAction(action.dataset.action, action.dataset.id);
+    return;
+  }
   if (event.target.closest('[data-action="new-booking"]')) {
     const modal = $("#bookingModal");
     if (modal?.showModal) modal.showModal();
@@ -199,12 +218,29 @@ document.addEventListener("click", (event) => {
     alert("Settings saved.");
     return;
   }
+  if (event.target.closest('[data-action="close-action"]')) {
+    $("#actionModal")?.close();
+    return;
+  }
   if (event.target.closest('[data-action="close-modal"]')) {
     $("#bookingModal")?.close();
   }
 });
 
 document.addEventListener("submit", (event) => {
+  if (event.target.id === "actionForm") {
+    event.preventDefault();
+    const booking = state.bookings.find(b => b.id === state.action?.bookingId);
+    if (!booking) return;
+    const data = new FormData(event.target);
+    if (state.action.type === "checkin") booking.status = "Checked in";
+    if (state.action.type === "checkout") booking.status = "Checked out";
+    if (state.action.type === "payment") booking.paymentStatus = data.get("status");
+    save();
+    $("#actionModal")?.close();
+    setSection("Reservations");
+    return;
+  }
   if (event.target.id !== "newBookingForm") return;
   event.preventDefault();
   const data = new FormData(event.target);
